@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Besan Beauty - عالم الجمال والعطور</title>
+    <meta name="description" content="عطور وبرفانات وعلب هدايا وإكسسوارات من Besan Beauty، صيدلانية مصرية. شحن لكل المحافظات.">
+    <meta name="keywords" content="عطور, برفانات, علب هدايا, إكسسوارات, Besan Beauty, شراء اونلاين, مصر">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://besanbeauty.com/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://besanbeauty.com/">
+    <meta property="og:title" content="Besan Beauty - عالم الجمال والعطور">
+    <meta property="og:description" content="عطور وبرفانات وعلب هدايا بأسعار حلوة من Besan Beauty. شحن لكل المحافظات.">
+    <meta property="og:image" content="logo-192.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://besanbeauty.com/">
+    <meta property="twitter:title" content="Besan Beauty - عالم الجمال والعطور">
+    <meta property="twitter:description" content="عطور وبرفانات وعلب هدايا بأسعار حلوة من Besan Beauty. شحن لكل المحافظات.">
+    <meta property="twitter:image" content="logo-192.png">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BookStore",
+      "name": "Besan Beauty",
+      "description": "عطور وبرفانات وعلب هدايا وإكسسوارات من Besan Beauty.",
+      "url": "https://besanbeauty.com/",
+      "image": "logo-192.png",
+      "priceRange": "$$",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "EG"
+      }
+    }
+    </script>
+
+    <!-- خط كايرو الفخم من جوجل -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- أيقونة الموقع (Favicon) -->
+    <link rel="icon" type="image/jpeg" href="logo-192.png">
+    <link rel="apple-touch-icon" href="logo-192.png">
+    <!-- PWA Setup -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f6006f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Besan Beauty">
+    <script src="pwa.js" defer></script>
+    <!-- مكتبة Supabase للتعامل مع قاعدة البيانات -->
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- مكتبة أيقونات Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600&display=swap" rel="stylesheet"></head>
+<body>
+<div id="splash" aria-hidden="true"><div class="bloom"><span class="petal" style="--i:0"></span><span class="petal" style="--i:1"></span><span class="petal" style="--i:2"></span><span class="petal" style="--i:3"></span><span class="petal" style="--i:4"></span><span class="petal" style="--i:5"></span><span class="petal" style="--i:6"></span><span class="petal" style="--i:7"></span><span class="ring"></span><img class="splash-logo" src="logo-512.png" alt=""></div><div class="word">BESAN BEAUTY</div></div>
+<script>(function(){var s=document.getElementById("splash");if(!s)return;try{if(sessionStorage.getItem("besanSplash")){s.remove();return}sessionStorage.setItem("besanSplash","1")}catch(e){}setTimeout(function(){s.classList.add("hide");setTimeout(function(){s.remove()},900)},3000)})();</script>
+    <!-- زر العودة للأعلى -->
+    <button id="scroll-top-btn" class="scroll-top-btn" onclick="scrollToTop()" title="العودة للقمة">
+        <i class="bi bi-arrow-up"></i>
+    </button>
+
+    <!-- الشريط العلوي الثابت (يظهر عند السكرول) -->
+    <div id="sticky-header" class="sticky-top-header">
+        <div class="sticky-logo" onclick="showCategoriesAndHome()" style="cursor:pointer;"><img src="logo-192.png" alt="Besan Beauty"><span class="logo-name">Besan Beauty</span></div>
+        
+        <div class="sticky-search-wrapper">
+            <input type="text" id="sticky-search" class="sticky-search-input" placeholder="بحث سريع..." oninput="syncSearch(this.value)">
+            <span class="sticky-search-icon"><i class="bi bi-search"></i></span>
+        </div>
+
+        <div class="sticky-actions">
+            <div class="action-icon" onclick="showCategoriesAndHome()" style="width: 30px; height: 30px; font-size: 0.9rem;">
+                <i class="bi bi-house-door-fill"></i>
+            </div>
+            <div class="action-icon" onclick="openCart()" style="width: 30px; height: 30px; font-size: 0.9rem; position: relative;">
+                <i class="bi bi-cart3"></i>
+                <span id="sticky-cart-count" class="global-cart-badge" style="font-size: 0.6rem; min-width: 14px; height: 14px;">0</span>
+            </div>
+            <button id="lang-toggle" class="lang-btn" onclick="toggleLanguage()">EN</button>
+        </div>
+    </div>
+
+    <!-- صفحة تفاصيل الكتاب (تظهر عند النقر) -->
+    <div id="book-details-page" class="book-details-page">
+        <div class="details-overlay">
+            <div style="width: 100%; max-width: 900px; margin-bottom: 30px; display: flex; justify-content: flex-start; align-items: center;">
+                <button class="back-btn" onclick="closeBookDetails()" title="العودة للمتجر" aria-label="العودة للمتجر"><i class="bi bi-arrow-right"></i></button>
+            </div>
+            <div id="details-content" class="details-container">
+                <!-- يتم ملؤه بواسطة الجافا سكريبت -->
+            </div>
+        </div>
+    </div>
+
+    <!-- مودال تعليمات البطارية (يظهر لضمان وصول الإشعارات) -->
+    <div id="battery-modal" class="battery-guide-modal">
+        <div class="battery-content">
+            <span class="close-battery" onclick="closeBatteryGuide()">&times;</span>
+            <div class="battery-icon-header">
+                <i class="bi bi-battery-charging"></i>
+            </div>
+            <h3>ضمان وصول الإشعارات ✨</h3>
+            <p>لكي تصلكِ رسائل الدعم الفني فوراً حتى والتطبيق مغلق، يرجى اتباع الآتي:</p>
+            <ul class="battery-steps">
+                <li>1️⃣ اضغطي مطولاً على أيقونة التطبيق في الشاشة الرئيسية.</li>
+                <li>2️⃣ اختاري <b>معلومات التطبيق (App Info)</b>.</li>
+                <li>3️⃣ ادخلي على <b>البطارية (Battery)</b>.</li>
+                <li>4️⃣ اختاري وضع <b>"غير مقيد" (Unrestricted)</b>.</li>
+            </ul>
+            <button class="confirm-order-btn" style="width: 100%;" onclick="closeBatteryGuide()">فهمت ذلك ✅</button>
+        </div>
+    </div>
+
+    <div class="page-wrapper">
+        <div class="main-content">
+            <header>
+                <div class="top-nav">
+                    <div class="logo-wrapper" onclick="showCategoriesAndHome()"><img class="logo-hero" src="logo-512.png" alt="Besan Beauty"><span class="logo-name">Besan Beauty</span><h1 class="logo-text sr-only">Besan Beauty</h1></div>
+                </div>
+                
+                <div class="search-container">
+                    <div class="search-input-wrapper">
+                        <input type="text" id="main-search" class="search-input" placeholder="ابحث عن منتج أو رايحة..." oninput="syncSearch(this.value)">
+                        <span class="search-icon"><i class="bi bi-search"></i></span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="categories-container">
+                <ul class="categories-list" id="top-cat-list">
+                    <li class="category-item active" onclick="handleCategorySelect('All', this)">All</li>
+                    <li class="category-item" onclick="handleCategorySelect('Body Powder', this)">Body Powder</li>
+                    <li class="category-item" onclick="handleCategorySelect('Body Splash', this)">Body Splash</li>
+                    <li class="category-item" onclick="handleCategorySelect('Mini Splash', this)">Mini Splash</li>
+                    <li class="category-item" onclick="handleCategorySelect('Bundles', this)">Bundles</li>
+                </ul>
+            </div>
+
+            <main class="shelf-section">
+                <div class="books-grid" id="books-list">
+                    <div class="loading-msg">جاري تحميل المنتجات... <i class="bi bi-stars"></i></div>
+                </div>
+            </main>
+
+            <div class="bottom-bar">
+                <div class="bottom-bar-item active" id="categories-bottom-tab" onclick="toggleBottomCats(event)" style="position: relative;">
+                    <span class="bar-icon"><i class="bi bi-grid"></i></span>
+                    <span>تصنيفات</span>
+                    
+                    <!-- المربع الصغير يفتح من هنا الآن -->
+                    <div class="category-dropdown" id="cat-dropdown-menu">
+                        <div class="dropdown-item active" onclick="handleCategorySelect('All', this)">All</div>
+                    <div class="dropdown-item" onclick="handleCategorySelect('Body Powder', this)">Body Powder</div>
+                    <div class="dropdown-item" onclick="handleCategorySelect('Body Splash', this)">Body Splash</div>
+                    <div class="dropdown-item" onclick="handleCategorySelect('Mini Splash', this)">Mini Splash</div>
+                    <div class="dropdown-item" onclick="handleCategorySelect('Bundles', this)">Bundles</div>
+                    </div>
+                </div>
+                <div class="bottom-bar-item" onclick="openCart()">
+                    <span class="bar-icon">
+                        <i class="bi bi-cart3"></i>
+                        <span id="global-cart-count" class="global-cart-badge">0</span>
+                    </span>
+                    <span>السلة</span>
+                </div>
+                <div class="bottom-bar-item" id="wishlist-tab" onclick="showWishlist()">
+                    <span class="bar-icon">
+                        <i class="bi bi-bookmark-heart"></i> <!-- أيقونة المفضلة -->
+                        <span id="global-wish-count" class="global-wish-badge">0</span>
+                    </span>
+                    <span>المفضلة</span>
+                </div>
+                <div class="bottom-bar-item" id="support-tab" onclick="showSupport()">
+                    <span class="bar-icon">
+                        <i class="bi bi-headset"></i>
+                        <span id="global-support-count" class="global-wish-badge">0</span>
+                    </span>
+                    <span>الدعم</span>
+                </div>
+            </div>
+
+            <footer>
+                <div class="dedication-box">
+                    <h3>إهداء خاص <i class="bi bi-feather"></i></h3>
+                    <p>جمالك يبدأ من التفاصيل الصغيرة.. اختاري عطرك وهديتك المفضلة من <strong>Besan Beauty</strong> 🌸</p>
+                    <div class="besan-footer-info">
+                      <h4>شكراً لاختياركم Besan Beauty</h4>
+                      <p>سيتم الرد عليكم في أقرب وقت.</p>
+                      <p>للإطلاع على الأسعار انظروا للكتالوج ♥️</p>
+                      <h4>تعليمات مهمة 🚩</h4>
+                      <ul>
+                        <li>مافيش أي أوردر بدون ديبوزت.</li>
+                        <li>في حالة تأكيد الأوردر برجاء إرسال عنوان كامل.</li>
+                        <li>رقم موبايل واحد فقط ويكون متاح وفيه شبكة.</li>
+                        <li>التوصيل بيكون من ٩ لـ ٢ وبعض المناطق ٤.</li>
+                        <li>التوصيل عن طريق البريد المصري – خدمة وصلها.</li>
+                      </ul>
+                      <div class="besan-return-policy">لا يوجد استبدال أو استرجاع لأي أوردر ‼️</div>
+                      <p class="besan-footer-links">ماتنسوش تعملولنا فولو على <a href="https://www.instagram.com/besanbeauty.eg?igsh=MWdhendid2J4aTd1dg==" target="_blank" rel="noopener">صفحة Instagram</a> · <a href="https://wa.me/c/201067826270" target="_blank" rel="noopener">كتالوج WhatsApp</a></p>
+                    </div>
+                    <ul class="social-links">
+                        <li><a href="https://www.facebook.com/share/1D2H8BJFVp/" target="_blank" title="فيس بوك"><i class="bi bi-facebook"></i></a></li>
+                        <li><a href="https://www.instagram.com/besanbeauty.eg" target="_blank" title="إنستجرام"><i class="bi bi-instagram"></i></a></li>
+                        <li><a href="https://wa.me/201067826270" target="_blank" title="واتساب"><i class="bi bi-whatsapp"></i></a></li>
+                    </ul>
+
+                    <!-- كارت المبرمج المطور داخل الفوتر -->
+                    <div class="besan-dev-credit">
+                        <span id="dev-badge" class="dev-badge">تصميم وتطوير <b>حنين</b> ✨</span>
+                        <a href="https://wa.me/201551455490" target="_blank" rel="noopener" title="التواصل مع المطوّرة"><i class="bi bi-whatsapp"></i></a>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <div id="drawer-overlay" class="drawer-overlay" onclick="closeTopmostDrawer()"></div>
+
+    <div id="cart-drawer" class="cart-drawer">
+        <div class="cart-header">
+            <h3>تأكيد طلبك <i class="bi bi-bag-check-fill"></i></h3> <!-- أيقونة جديدة أكثر امتلاءً -->
+            <span class="close-drawer" onclick="closeCart()"><i class="bi bi-x-lg"></i></span>
+        </div>
+        
+        <!-- حاوية المنتجات المضافة -->
+        <div id="cart-items-container"></div>
+        
+        <!-- قسم تفاصيل الطلب والحسابات: يختفي تماماً لو السلة فارغة -->
+        <div id="order-ui-wrapper" style="display: none; flex-direction: column;">
+            <div id="total-sec" class="cart-total-section" style="margin-bottom: 15px;">
+                <p style="font-size: 0.9rem; color: var(--paper-light); text-align: right; margin-bottom: 5px;">عدد المنتجات: <span id="books-count-val" style="font-weight: bold; color: var(--accent-wood);">0</span> كتاب</p>
+                <h4 style="border-top: 1px solid rgba(246, 0, 111, 0.2); padding-top: 10px;">إجمالي الطلب: <span id="total-val">0</span> ج.م</h4>
+            </div>
+
+            <div class="order-form">
+            <div class="input-group">
+                <i class="bi bi-person"></i>
+                <input type="text" id="customer-name" placeholder="الاسم الثنائي على الأقل">
+            </div>
+            <div id="name-error" class="validation-error"></div>
+            <div class="input-group">
+                <i class="bi bi-phone"></i>
+                <input type="tel" id="customer-phone" placeholder="رقم الموبايل المصري (11 رقم)">
+            </div>
+            <div id="phone-error" class="validation-error"></div>
+            <div class="input-group">
+                <i class="bi bi-whatsapp"></i>
+                <input type="tel" id="customer-whatsapp" placeholder="رقم الواتساب (إجباري)">
+            </div>
+            <div id="whatsapp-error" class="validation-error"></div>
+            <div class="input-group select-group">
+                <i class="bi bi-geo-alt"></i>
+                <select id="customer-province" class="styled-select">
+                    <option value="">اختر المحافظة</option>
+                </select>
+            </div>
+            <div id="province-error" class="validation-error"></div>
+            <div class="input-group">
+                <i class="bi bi-house-door"></i>
+                <textarea id="customer-address" placeholder="العنوان بالتفصيل" rows="3"></textarea>
+            </div>
+            <div id="address-error" class="validation-error"></div>
+            <!-- حقل ملاحظات العميل الجديد (اختياري) -->
+            <div class="input-group">
+                <i class="bi bi-chat-dots"></i>
+                <textarea id="customer-notes" placeholder="ملاحظات العميل (اختياري)" rows="2"></textarea>
+            </div>
+            <div id="shipping-info-message" class="shipping-info-box" style="display: none;">
+                <p>ملحوظة: سعر الشحن <span id="shipping-message-cost">0</span> ج.م</p>
+                <p>الشحن يستغرق من 3 إلى 5 أيام عمل.</p>
+            </div>
+            
+            <div id="shipping-sec" class="cart-total-section" style="display: none;">
+                <h4>تكلفة الشحن: <span id="shipping-val">0</span> ج.م</h4>
+            </div>
+
+            <div id="grand-total-sec" class="cart-total-section" style="display: none;">
+                <h4>الإجمالي الكلي: <span id="grand-total-val">0</span> ج.م</h4>
+            </div>
+
+            <button class="confirm-order-btn" onclick="confirmOrder()">تأكيد الطلب <i class="bi bi-bag-check-fill"></i></button>
+            </div>
+        </div>
+        <div class="pay-later-wrap">
+            <button type="button" class="pay-later-link" onclick="openReceiptOnly()"><i class="bi bi-paperclip"></i> سجّلتي طلب ومحتاجة ترفعي إيصال الدفع؟</button>
+        </div>
+    </div>
+
+    <!-- شاشة دفع العربون -->
+    <div id="pay-overlay" class="pay-overlay" style="display:none" onclick="if(event.target===this) closePayModal()">
+        <div class="pay-card" role="dialog" aria-modal="true" aria-labelledby="pay-title">
+            <button type="button" class="pay-close" onclick="closePayModal()" aria-label="إغلاق"><i class="bi bi-x-lg"></i></button>
+
+            <div id="pay-view-form">
+                <h3 id="pay-title" class="pay-title"></h3>
+                <p id="pay-sub" class="pay-sub"></p>
+
+                <div id="pay-amount-box" class="pay-amount">
+                    <small id="pay-amount-label"></small>
+                    <div class="pay-amount-row">
+                        <b><span id="pay-deposit">0</span> <span id="pay-cur">ج.م</span></b>
+                        <button type="button" class="pay-copy" id="pay-copy-amount" onclick="payCopyText(document.getElementById('pay-deposit').textContent, this)"></button>
+                    </div>
+                    <div id="pay-breakdown" class="pay-breakdown"></div>
+                </div>
+
+                <div id="pay-methods" class="pay-methods">
+                    <div class="pay-method" id="pay-method-wallet">
+                        <span class="pay-method-label" id="pay-wallet-label"></span>
+                        <span class="pay-method-val" id="pay-wallet" dir="ltr"></span>
+                        <button type="button" class="pay-copy" onclick="payCopyText(document.getElementById('pay-wallet').textContent, this)"></button>
+                    </div>
+                    <div class="pay-method" id="pay-method-instapay">
+                        <span class="pay-method-label" id="pay-instapay-label"></span>
+                        <span class="pay-method-val" id="pay-instapay" dir="ltr"></span>
+                        <button type="button" class="pay-copy" onclick="payCopyText(document.getElementById('pay-instapay').textContent, this)"></button>
+                    </div>
+                </div>
+
+                <ol id="pay-steps" class="pay-steps"></ol>
+
+                <div id="pay-attach-fields" class="pay-attach" style="display:none">
+                    <div class="input-group">
+                        <i class="bi bi-phone"></i>
+                        <input type="tel" id="pay-phone" placeholder="">
+                    </div>
+                </div>
+
+                <label class="pay-upload" id="pay-upload-label" for="pay-file">
+                    <input type="file" id="pay-file" accept="image/*" style="display:none" onchange="payPickFile(this)">
+                    <img id="pay-preview" alt="" style="display:none">
+                    <span id="pay-upload-text"></span>
+                </label>
+
+                <div id="pay-error" class="pay-error" style="display:none"></div>
+
+                <button type="button" id="pay-submit" class="confirm-order-btn" onclick="payConfirm(true)"></button>
+                <button type="button" id="pay-later" class="pay-later-btn" onclick="payConfirm(false)"></button>
+                <p id="pay-expiry-note" class="pay-note"></p>
+            </div>
+
+            <div id="pay-view-done" class="pay-done" style="display:none">
+                <div class="pay-done-icon"><i class="bi bi-check-lg"></i></div>
+                <h3 id="pay-done-title"></h3>
+                <p id="pay-done-text"></p>
+                <div id="pay-done-detail" class="pay-msg" style="display:none"></div>
+                <button type="button" class="confirm-order-btn" id="pay-done-btn" onclick="closePayModal()"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الدعم الفني (Chat Support) -->
+    <div id="support-drawer" class="support-drawer">
+        <div class="cart-header">
+            <h3 id="client-chat-header" style="font-size: 1.1rem;">مركز الدعم <i class="bi bi-headset"></i></h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="end-chat-btn" class="end-chat-btn-new" style="display: none;" onclick="endChat()"><i class="bi bi-box-arrow-right"></i> إنهاء الدردشة</button>
+                <span class="close-drawer" onclick="closeSupport()"><i class="bi bi-x-lg"></i></span>
+            </div>
+        </div>
+        <div id="chat-auth-section" style="padding: 20px; text-align: center; display: none;">
+            <p style="margin-bottom: 15px; font-size: 0.9rem;">من فضلكِ أدخلي رقم الموبايل لبدء الدردشة مع الدعم الفني ✨</p>
+            <div class="input-group">
+                <i class="bi bi-phone"></i>
+                <input type="tel" id="chat-phone-input" placeholder="رقم الموبايل (11 رقم)">
+            </div>
+            <div id="chat-auth-error" class="validation-error" style="display: none; text-align: center; margin-top: 10px;"></div>
+            <button class="confirm-order-btn" style="width: 100%; margin-top: 15px;" onclick="identifyChatUser()">بدء المحادثة</button>
+        </div>
+        <div class="chat-body" id="chat-body" style="display: none;">
+            <div class="msg msg-bot">أهلاً بكِ! ✨ كيف يمكننا مساعدتكِ اليوم؟</div>
+            <!-- مؤشر الكتابة تحت الرسائل -->
+            <div id="client-typing-indicator" class="typing-indicator">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>الدعم يكتب الآن...</span>
+            </div>
+            <!-- مؤشر كتابة العميل (يظهر للأدمن) -->
+            <div id="user-typing-indicator" class="typing-indicator" style="display: none;">
+                <div class="typing-dots"><span></span><span></span><span></span></div>
+                <span>العميل يكتب الآن...</span>
+            </div>
+        </div>
+        <div class="quick-actions">
+            <button class="quick-btn" onclick="sendQuickMsg('الأوردر بتاعي لسه موصلش؟ 🚚')">الأوردر بتاعي لسه موصلش؟ 🚚</button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="chat-input" placeholder="اكتبي استفسارك هنا..." style="padding-left: 65px;">
+            <button class="chat-send-btn" onclick="sendMessage()">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <script>
+        // تسجيل الـ Service Worker لدعم الإشعارات في الخلفية
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('Service Worker Registered');
+                }).catch(err => console.log('SW Registration Failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
