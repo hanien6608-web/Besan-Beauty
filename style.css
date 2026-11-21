@@ -1560,3 +1560,9 @@ div:has(> #dev-badge) .dev-social-icon{color:#fff!important}
 .besan-footer-info{max-width:680px;margin:22px auto 0;padding:20px 22px;text-align:right;background:rgba(255,255,255,.78);border:1px solid rgba(201,30,108,.14);border-radius:20px;color:#684457;line-height:1.9;font-size:.86rem;box-shadow:0 8px 24px rgba(110,30,70,.06)}
 .besan-footer-info h4{color:#bd286d;font-size:.95rem;margin:10px 0 5px;font-weight:900}.besan-footer-info p{margin:4px 0}.besan-footer-info ul{margin:5px 0;padding:0 22px 0 0}.besan-footer-info li{padding:2px 0}.besan-return-policy{margin-top:12px;padding:11px 13px;border-radius:12px;background:#fff0f4;border:1px solid rgba(190,25,75,.2);color:#a51e4f;font-weight:900;text-align:center}.besan-footer-links{margin-top:12px!important;text-align:center}.besan-footer-info a{color:#bd286d;font-weight:900;text-decoration:none}.besan-dev-credit{display:flex;align-items:center;justify-content:center;gap:12px;width:max-content;max-width:100%;margin:22px auto 0;padding:10px 16px;border:1px solid rgba(201,30,108,.15);border-radius:15px;background:rgba(255,255,255,.72);box-shadow:0 5px 16px rgba(110,30,70,.06)}.besan-dev-credit .dev-badge{margin:0!important;padding:0!important;background:transparent!important;color:#8d526e!important;font-size:.78rem;font-weight:700}.besan-dev-credit a{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:#fce8f0;color:#c21d68;font-size:1.05rem}
 @media(max-width:600px){.besan-footer-info{padding:16px 14px;font-size:.8rem}.besan-dev-credit{padding:8px 12px}}
+
+
+/* mobile: keep the add-to-cart button from covering the price */
+@media (max-width: 600px) {
+    .price-cart-container { padding-bottom: 46px; }
+}

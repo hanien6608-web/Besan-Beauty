@@ -62,10 +62,11 @@
     });
   }
 
-  window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installEvent = event; showCard(); });
+  window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installEvent = event; setTimeout(showCard, 45000); });
   window.addEventListener('appinstalled', () => { if (card) card.remove(); card = null; });
   window.addEventListener('load', () => {
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
-    setTimeout(showCard, 1800);
+    setTimeout(showCard, 45000);
   });
 })();
+

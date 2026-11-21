@@ -49,10 +49,18 @@ function updateLayersScroll() {
 }
 
 // مخزن لترجمات المحافظات لتجنب تكرار الطلبات
-let provinceTranslationCache = JSON.parse(localStorage.getItem('provinceTranslationCache')) || {};
+let provinceTranslationCache = {};
 
 // مخزن للترجمات الآلية لتجنب تكرار الطلبات
-let autoTranslationCache = JSON.parse(localStorage.getItem('autoTranslationCache')) || {};
+// v2: old cached machine translations (e.g. 'fluorescent') are dropped
+try { localStorage.removeItem('autoTranslationCache'); localStorage.removeItem('provinceTranslationCache'); } catch (e) {}
+let autoTranslationCache = JSON.parse(localStorage.getItem('autoTranslationCache_v2')) || {};
+// curated English text always wins over cached machine output
+if (window.BESAN_EN) {
+    Object.keys(window.BESAN_EN.products).forEach(id => {
+        autoTranslationCache[id] = Object.assign({}, autoTranslationCache[id], window.BESAN_EN.products[id]);
+    });
+}
 
 // تعريف وتحميل صوت الشات مسبقاً
 const chatSound = new Audio(APP_CONFIG.SOUND_CHAT);
@@ -443,7 +451,7 @@ function renderBookCard(book, index) {
             <p class="author-name" itemprop="author">${t.by}: ${displayAuthor}</p>
             <p class="book-desc" itemprop="description">${displayDesc}</p>
             ${isSoldOut ? 
-                `<div class="out-of-stock-badge">نفذت الكمية</div>` : 
+                `<div class="out-of-stock-badge">${lang === 'en' ? 'Sold out' : 'نفذت الكمية'}</div>` : 
                 `<button class="cart-btn" id="add-btn-${book.id}" data-id="${book.id}" onclick="event.stopPropagation(); addItemToCart('${book.id}')">
                     <i class="bi bi-cart-plus"></i>
                 </button>`
@@ -559,14 +567,14 @@ async function showBookDetails(id, shouldPush = true) {
             <div style="font-size: 2rem; color: var(--paper-light); margin-bottom: 25px; font-weight: bold;">${book.price} ${t.currency}</div>
             <div class="details-actions">
                 ${isSoldOut ? 
-                    `<div class="out-of-stock-badge" style="font-size: 1.3rem; padding: 15px 40px; flex: 1; text-align: center;">نفذت الكمية من Besan Beauty 🌸</div>` :
+                    `<div class="out-of-stock-badge" style="font-size: 1.3rem; padding: 15px 40px; flex: 1; text-align: center;">${lang === 'en' ? 'Sold out' : 'نفذت الكمية من Besan Beauty 🌸'}</div>` :
                     `<div class="details-qty-container">
                         <button class="qty-btn-det" onclick="updateDetQty(-1)"><i class="bi bi-dash"></i></button>
                         <span id="det-qty-val" style="font-size: 1.6rem; font-weight: bold; color: var(--paper-light); min-width: 30px; text-align: center;">1</span>
                         <button class="qty-btn-det" onclick="updateDetQty(1)"><i class="bi bi-plus"></i></button>
                     </div>
                     <button id="details-add-btn" class="shop-now-btn ${isInCart ? 'success' : ''}" style="flex: 1; min-width: 200px;" onclick="addItemToCart('${book.id}', currentDetailsQty)">
-                        ${isInCart ? '<i class="bi bi-check-lg"></i> تم الإضافة' : '<i class="bi bi-cart-plus"></i> إضافة للسلة'}
+                        ${isInCart ? `<i class="bi bi-check-lg"></i> ${lang === 'en' ? t.added : 'تم الإضافة'}` : `<i class="bi bi-cart-plus"></i> ${lang === 'en' ? t.addToCart : 'إضافة للسلة'}`}
                     </button>`
                 }
                 <button id="details-wish-btn" class="wish-btn-large ${isInWishlist ? 'active' : ''}" onclick="toggleWishlist(${book.id}); updateDetailsWishBtn(${book.id})">
@@ -730,16 +738,13 @@ const translations = {
     }
 };
 
+// English layer (i18n-en.js): fills missing keys, drops leftover book data
+if (window.BESAN_EN) { Object.assign(translations.en, window.BESAN_EN.ui); translations.en.bookData = {}; }
+
 // وظيفة الترجمة الآلية باستخدام محرك Google (بدون مفتاح API لسهولة الاستخدام)
 async function translateText(text) {
-    if (!text || !/[^\x00-\x7F]/.test(text)) return text; // إذا كان النص إنجليزي أصلاً لا نترجمه
-    try {
-        const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=ar&tl=en&dt=t&q=${encodeURIComponent(text)}`);
-        const data = await res.json();
-        return data[0].map(s => s[0]).join('');
-    } catch (e) {
-        return text;
-    }
+    if (window.BESAN_EN) return window.BESAN_EN.smartTranslate(text);
+    return text;
 }
 
 async function triggerAutoTranslate(book) {
@@ -757,7 +762,7 @@ async function triggerAutoTranslate(book) {
         desc: translatedDesc
     };
 
-    localStorage.setItem('autoTranslationCache', JSON.stringify(autoTranslationCache));
+    localStorage.setItem('autoTranslationCache_v2', JSON.stringify(autoTranslationCache));
     
     // تحديث الواجهة فقط إذا كان المستخدم ما زال على اللغة الإنجليزية
     if (document.documentElement.lang === 'en') {
@@ -865,10 +870,11 @@ async function toggleLanguage() {
 
 // وظيفة لترجمة المحافظات ديناميكياً
 async function translateProvinceName(provinceName) {
+    const known = window.BESAN_EN && window.BESAN_EN.province(provinceName);
+    if (known) return known;
     if (provinceTranslationCache[provinceName]) return provinceTranslationCache[provinceName];
     const translated = await translateText(provinceName);
     provinceTranslationCache[provinceName] = translated;
-    localStorage.setItem('provinceTranslationCache', JSON.stringify(provinceTranslationCache));
     return translated;
 }
 
@@ -912,7 +918,7 @@ function updateCartUI() {
     if (detailsBtn && window.currentOpenedBookId) {
         const isInCart = cart.find(i => String(i.id) === String(window.currentOpenedBookId));
         detailsBtn.classList.toggle('success', !!isInCart);
-        detailsBtn.innerHTML = isInCart ? '<i class="bi bi-check-lg"></i> تم الإضافة' : '<i class="bi bi-cart-plus"></i> إضافة للسلة';
+        detailsBtn.innerHTML = isInCart ? `<i class="bi bi-check-lg"></i> ${lang === 'en' ? t.added : 'تم الإضافة'}` : `<i class="bi bi-cart-plus"></i> ${lang === 'en' ? t.addToCart : 'إضافة للسلة'}`;
     }
     updateGlobalCartCount(); updateGlobalWishCount();
     if (cart.length === 0) {
@@ -1035,7 +1041,19 @@ function openCart(shouldPush = true) {
     addLockScroll();
     updateLayersScroll(); // تحديث السكرول فور فتح السلة
     if (shouldPush) pushNavigationState('cart'); updateCartUI();
+    // never show checkout errors just because the cart was opened
+    document.querySelectorAll('#cart-drawer .validation-error').forEach(e => { e.style.display = 'none'; });
 }
+
+// hide a field's error as soon as the customer edits that field
+['name', 'phone', 'whatsapp', 'address'].forEach(k => {
+    document.addEventListener('input', ev => {
+        if (ev.target && ev.target.id === 'customer-' + k) { const e = document.getElementById(k + '-error'); if (e) e.style.display = 'none'; }
+    });
+});
+document.addEventListener('change', ev => {
+    if (ev.target && ev.target.id === 'customer-province') { const e = document.getElementById('province-error'); if (e) e.style.display = 'none'; }
+});
 
 function closeCart(shouldGoBack = true) {
     if (!document.getElementById('cart-drawer').classList.contains('open')) return;
@@ -1062,7 +1080,7 @@ async function populateProvinces() {
 }
 
 async function confirmOrder() {
-    if (cart.length === 0) { alert("السلة فارغة! لا يمكن تأكيد طلب بدون منتجات."); return; }
+    if (cart.length === 0) { alert(document.documentElement.lang === 'en' ? translations.en.cartEmptyAlert : "السلة فارغة! لا يمكن تأكيد طلب بدون منتجات."); return; }
     const nameInput = document.getElementById('customer-name'); const phoneInput = document.getElementById('customer-phone');
     const whatsappInput = document.getElementById('customer-whatsapp'); const provinceSelect = document.getElementById('customer-province');
     const addressTextarea = document.getElementById('customer-address'); const addressError = document.getElementById('address-error');
@@ -1697,7 +1715,7 @@ async function startChatSync(phone) {
 }
 
 function endChat() {
-    if(!confirm("هل أنتِ متأكدة من إنهاء الدردشة؟ سيتم مسح بيانات الدخول.")) return;
+    if(!confirm(document.documentElement.lang === 'en' ? translations.en.endChatConfirm : "هل أنتِ متأكدة من إنهاء الدردشة؟ سيتم مسح بيانات الدخول.")) return;
     localStorage.removeItem('user_chat_phone'); localStorage.removeItem('chat_auto_until'); localStorage.removeItem(OUTBOX_KEY); localStorage.removeItem(SEEN_KEY);
     if (chatSubscription) { _supabase.removeAllChannels(); chatSubscription = null; }
     document.getElementById('chat-body').innerHTML = ''; showSupport();
@@ -1857,3 +1875,4 @@ function closeTopmostDrawer() {
     if (supportDrawer && supportDrawer.classList.contains('open')) closeSupport();
     else if (cartDrawer && cartDrawer.classList.contains('open')) closeCart();
 }
+

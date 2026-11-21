@@ -1,11 +1,12 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v2';
+const CACHE_NAME = 'besan-client-shell-v3';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',
   './index.html',
   './style.css',
   './script.js',
+  './i18n-en.js',
   './config.js',
   './pwa.js',
   './manifest.json',
@@ -99,3 +100,4 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
