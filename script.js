@@ -1381,6 +1381,7 @@ function chatPhoneKey(p) { return String(p || '').replace(/\D/g, '').slice(-10);
 function chatAutoExpiryCheck() {
     const until = parseInt(localStorage.getItem('chat_auto_until') || '0', 10);
     if (until && Date.now() > until) {
+        if (window.besanCustomerPushOff) besanCustomerPushOff();
         localStorage.removeItem('user_chat_phone'); localStorage.removeItem('chat_auto_until');
         if (chatSubscription) { try { _supabase.removeAllChannels(); } catch (e) {} chatSubscription = null; }
     }
@@ -1441,6 +1442,7 @@ function showSupport() {
         supportNewCount = 0; localStorage.setItem('supportNewCount', 0); markSeenNow(); updateGlobalSupportCount();
         if (chatSubscription) loadChatHistory(phoneToUse.replace(/\D/g, '')); else startChatSync(phoneToUse);
         flushOutbox();
+        if (window.besanCustomerPushInit) besanCustomerPushInit(phoneToUse.replace(/\D/g, ''));
     } else {
         document.getElementById('chat-auth-section').style.display = 'block'; document.getElementById('end-chat-btn').style.display = 'none';
         document.getElementById('chat-body').style.display = 'none';
@@ -1714,6 +1716,7 @@ async function startChatSync(phone) {
 
 function endChat() {
     if(!confirm(document.documentElement.lang === 'en' ? translations.en.endChatConfirm : "هل أنتِ متأكدة من إنهاء الدردشة؟ سيتم مسح بيانات الدخول.")) return;
+    if (window.besanCustomerPushOff) besanCustomerPushOff();
     localStorage.removeItem('user_chat_phone'); localStorage.removeItem('chat_auto_until'); localStorage.removeItem(OUTBOX_KEY); localStorage.removeItem(SEEN_KEY);
     if (chatSubscription) { _supabase.removeAllChannels(); chatSubscription = null; }
     document.getElementById('chat-body').innerHTML = ''; showSupport();
