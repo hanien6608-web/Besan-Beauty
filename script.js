@@ -1118,8 +1118,6 @@ async function confirmOrder() {
         alert(t.orderSuccess);
         resetOrderForm();
         closeCart();
-        window.__openSupportAfter = false;
-        setTimeout(() => { try { if (chatSess() && !isSupportOpen()) showSupport(); } catch (e) {} }, 200);
     } catch (err) { alert(`${t.orderError} ${err.message}`); }
     finally { confirmBtn.disabled = false; confirmBtn.innerHTML = `${t.confirmOrderBtn} <i class="bi bi-bag-check-fill"></i>`; }
 }
@@ -1250,7 +1248,7 @@ async function openReceiptOnly() {
     try { settings = await loadPaymentSettings(); } catch (e) { alert(payT('settingsError')); return; }
     openPayModal({ mode: 'attach', settings });
 }
-function closePayModal() { document.getElementById('pay-overlay').style.display = 'none'; PAY.busy = false; syncScrollLock(); if (window.__openSupportAfter) { window.__openSupportAfter = false; setTimeout(() => { try { if (chatSess() && !isSupportOpen()) showSupport(); } catch (e) {} }, 150); } }
+function closePayModal() { document.getElementById('pay-overlay').style.display = 'none'; PAY.busy = false; syncScrollLock(); }
 
 function payError(msg) { const el = document.getElementById('pay-error'); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
 function payResetUpload() {
@@ -1404,8 +1402,8 @@ function chatSessionStart(placed) {
         if (old && old.token !== placed.token) { chatStopSync(); localStorage.removeItem(OUTBOX_KEY); }
         chatSessSave({ token: placed.token, order_id: placed.id || placed.order_id, expires_at: placed.expires_at });
         if (placed.code) { localStorage.setItem('chat_code_' + (placed.id || placed.order_id), placed.code); }
-        window.__openSupportAfter = true;
         startChatSync();
+        setTimeout(() => { try { if (chatSess() && !isSupportOpen()) { showSupport(); const po = document.getElementById('pay-overlay'); if (po && po.style.display !== 'none') { document.getElementById('support-drawer').classList.add('over-pay'); document.getElementById('drawer-overlay').classList.add('over-pay'); } } } catch (e) {} }, 350);
     } catch (e) { console.error(e); }
 }
 
@@ -1457,7 +1455,7 @@ function showSupport() {
 
 function closeSupport(shouldGoBack = true) {
     if (!document.getElementById('support-drawer').classList.contains('open')) return;
-    document.getElementById('support-drawer').classList.remove('open'); document.getElementById('drawer-overlay').classList.remove('open');
+    document.getElementById('support-drawer').classList.remove('open'); document.getElementById('drawer-overlay').classList.remove('open'); document.getElementById('support-drawer').classList.remove('over-pay'); document.getElementById('drawer-overlay').classList.remove('over-pay');
     removeLockScroll();
     updateLayersScroll(); // إعادة السكرول لما تحته فور إغلاق الدعم
     if (shouldGoBack && window.history.state?.view === 'support') window.history.back();

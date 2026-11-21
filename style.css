@@ -1626,3 +1626,7 @@ footer.besan-footer .besan-dev-credit a, footer.besan-footer .besan-dev-credit a
 .support-drawer { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
 .support-drawer .quick-actions { margin-bottom: 10px; }
 .support-drawer .chat-body { margin-bottom: 8px; }
+
+/* الدعم يظهر فوق كارت نجاح الطلب لحظة تسجيل الطلب */
+.support-drawer.over-pay{z-index:100020}
+.drawer-overlay.over-pay{z-index:100018}
