@@ -1607,3 +1607,17 @@ html[dir="ltr"] .scroll-top-btn { left: auto; right: 20px; }
 }
 /* credit pill: pink WhatsApp icon */
 footer.besan-footer .besan-dev-credit a, footer.besan-footer .besan-dev-credit a i { color: #c21d68 !important; }
+
+/* pink footer, white text (approved) */
+footer.besan-footer { background: linear-gradient(135deg, #f6006f, #c21d68) !important; color: #fff !important; }
+footer.besan-footer .dedication-box, footer.besan-footer .dedication-box * { color: #fff !important; }
+footer.besan-footer .dedication-box h2, footer.besan-footer .dedication-box h3, footer.besan-footer .besan-footer-info h4 { color: #fff !important; }
+footer.besan-footer .besan-return-policy { background: #fff !important; color: #c21d68 !important; border: 0 !important; }
+footer.besan-footer .besan-return-policy * { color: #c21d68 !important; }
+footer.besan-footer .social-links a, footer.besan-footer .social-links a i { color: #fff !important; }
+footer.besan-footer .besan-footer-info a { color: #fff !important; text-decoration: underline; }
+footer.besan-footer .besan-dev-credit, footer.besan-footer div.besan-dev-credit:has(> #dev-badge) { background: #fff !important; }
+footer.besan-footer .besan-dev-credit .dev-badge, footer.besan-footer .besan-dev-credit .dev-badge b,
+footer.besan-footer .besan-dev-credit a, footer.besan-footer .besan-dev-credit a i { color: #c21d68 !important; }
+/* up-arrow: white ring so it stays visible on the pink footer */
+.scroll-top-btn { border: 3px solid #fff !important; box-shadow: 0 0 0 1px rgba(194,29,104,.35), 0 6px 16px rgba(80,20,48,.3) !important; }
