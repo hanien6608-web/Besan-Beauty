@@ -1650,7 +1650,7 @@ async function rtConnect() {
             _rtCh = _rtc.channel(d.topic, { config: { private: true, broadcast: { self: false } } })
                 .on('broadcast', { event: 'msg' }, p => rtOnMsg(p.payload || {}))
                 .on('broadcast', { event: 'typing' }, p => rtOnTyping(p.payload || {}))
-                .on('broadcast', { event: 'delete_chat' }, () => { const cb = document.getElementById('chat-body'); if (cb) { cb.querySelectorAll('.msg').forEach(m => m.remove()); renderedCids.clear(); } appendMessage('تم تنظيف المحادثة... ✨', 'admin'); })
+                .on('broadcast', { event: 'delete_chat' }, () => { const cb = document.getElementById('chat-body'); if (cb) { cb.querySelectorAll('.msg').forEach(m => m.remove()); renderedCids.clear(); } appendMessage('تم تنظيف المحادثة', 'admin'); })
                 .subscribe(st => { if (st === 'SUBSCRIBED') loadChatHistory(); });
         }
         // تجديد التوكن قبل ما ينتهي (الجلسة نفسها لسه صالحة 72 ساعة)
