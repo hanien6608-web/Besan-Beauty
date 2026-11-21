@@ -1684,7 +1684,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inp) inp.addEventListener('input', () => {
         if (!_rtCh || Date.now() - _rtLastTyping < 1500) return;
         _rtLastTyping = Date.now();
-        try { _supabase.rpc('chat_typing_s', { p_token: chatSess(), p_typing: true }); } catch (e) {}
+        try { _supabase.rpc('chat_typing_s', { p_token: (chatSess() || {}).token || '', p_typing: true }); } catch (e) {}
     });
 });
 async function startChatSync() {
@@ -1718,7 +1718,7 @@ async function sendMessage() {
     renderedCids.add(cid);
     appendMessage(text, 'user', cid, 'pending'); input.value = '';
     const ob = getOutbox(); ob.push({ cid, text, ts: Date.now(), attempts: 0 }); setOutbox(ob);
-    try { _supabase.rpc('chat_typing_s', { p_token: chatSess(), p_typing: false }); } catch (e) {}
+    try { _supabase.rpc('chat_typing_s', { p_token: (chatSess() || {}).token || '', p_typing: false }); } catch (e) {}
     await flushOutbox();
     if (/^\d{1,9}$/.test(text) || /(طلب|اوردر|أوردر|شحن|توصيل|وصل|order|ship|deliver)/i.test(text)) {
         setTimeout(() => handleBotReply(text), 800);
