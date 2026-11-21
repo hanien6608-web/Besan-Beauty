@@ -1584,3 +1584,11 @@ footer.besan-footer .besan-dev-credit { margin: 22px 0 0; width: auto; max-width
 footer.besan-footer div.besan-dev-credit:has(> #dev-badge) { width: max-content; }
 footer.besan-footer div.besan-dev-credit:has(> #dev-badge) .dev-badge { background: transparent !important; color: #fff !important; }
 footer.besan-footer div.besan-dev-credit:has(> #dev-badge) .dev-badge b { color: #fff; }
+
+/* footer follow-up: readable dev credit, side-aligned on desktop, scroll button clearance */
+footer.besan-footer div.besan-dev-credit:has(> #dev-badge) { background: #fff !important; border: 1.5px solid #c21d68; box-shadow: 0 4px 14px rgba(194,29,104,.18); }
+footer.besan-footer div.besan-dev-credit:has(> #dev-badge) .dev-badge,
+footer.besan-footer div.besan-dev-credit:has(> #dev-badge) .dev-badge b { color: #c21d68 !important; font-weight: 800; }
+footer.besan-footer .dedication-box { margin-inline-start: 0; margin-inline-end: auto; padding-inline: clamp(24px, 5vw, 80px); }
+.scroll-top-btn { right: auto; left: 20px; }
+html[dir="ltr"] .scroll-top-btn { left: auto; right: 20px; }
