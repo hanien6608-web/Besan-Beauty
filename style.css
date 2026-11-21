@@ -1569,3 +1569,14 @@ div:has(> #dev-badge) .dev-social-icon{color:#fff!important}
 
 /* keep the line breaks the owner typed in product descriptions */
 .full-desc, .book-card p { white-space: pre-line; }
+
+/* single footer: one surface, text aligned to the side, socials in the same block */
+footer.besan-footer { background: linear-gradient(135deg,#fff,#ffe9f2) !important; padding: 0; }
+footer.besan-footer .dedication-box { background: none !important; box-shadow: none !important; border: 0 !important; backdrop-filter: none; text-align: start; max-width: 900px; margin: 0 auto; padding: 36px 24px 24px; }
+footer.besan-footer .dedication-box::after { display: none; }
+footer.besan-footer .dedication-box h3, footer.besan-footer .dedication-box p { text-align: start; }
+footer.besan-footer .besan-footer-info { background: none; border: 0; box-shadow: none; padding: 0; max-width: none; margin: 18px 0 0; text-align: start; }
+footer.besan-footer .besan-return-policy { text-align: start; }
+footer.besan-footer .social-links { justify-content: flex-start; margin-top: 22px; padding: 0; }
+footer.besan-footer .besan-dev-credit { margin: 22px 0 0; width: auto; max-width: 100%; justify-content: flex-start; }
+@media (max-width: 600px) { footer.besan-footer .dedication-box { padding: 28px 16px 18px; } }
