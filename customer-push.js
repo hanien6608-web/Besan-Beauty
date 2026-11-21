@@ -32,6 +32,10 @@
   }
   function show(el, btnText, note, disabled) {
     el.style.display = 'block';
+    // compact one-line text when there is no button (e.g. "notifications on"); the full padding only for the opt-in button
+    el.style.padding = btnText ? '6px 14px' : '0 14px 4px';
+    el.querySelector('#cpush-note').style.marginTop = btnText ? '4px' : '0';
+    el.querySelector('#cpush-note').style.textAlign = btnText ? 'center' : 'start';
     const b = el.querySelector('#cpush-btn');
     b.textContent = btnText || '';
     b.style.display = btnText ? 'inline-block' : 'none';

@@ -1621,3 +1621,8 @@ footer.besan-footer .besan-dev-credit .dev-badge, footer.besan-footer .besan-dev
 footer.besan-footer .besan-dev-credit a, footer.besan-footer .besan-dev-credit a i { color: #c21d68 !important; }
 /* up-arrow: white ring so it stays visible on the pink footer */
 .scroll-top-btn { border: 3px solid #fff !important; box-shadow: 0 0 0 1px rgba(194,29,104,.35), 0 6px 16px rgba(80,20,48,.3) !important; }
+
+/* chat composer sits at the very bottom (safe-area aware); less empty space under the input */
+.support-drawer { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+.support-drawer .quick-actions { margin-bottom: 10px; }
+.support-drawer .chat-body { margin-bottom: 8px; }
