@@ -665,13 +665,11 @@ function syncSearch(val) {
         renderBooksList(window.fullData);
         return;
     }
-    const normTerm = normalizeArabic(term).toLowerCase();
-    const escapedTerm = normTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`(^|\\s)${escapedTerm}(\\s|$)`, 'i');
+    const norm = t => normalizeArabic(String(t || '')).replace(/[\u064B-\u0652\u0640]/g, '').replace(/ى/g, 'ي').toLowerCase();
+    const words = norm(term).split(/\s+/).filter(Boolean);
     const filtered = window.fullData.filter(book => {
-        const normTitle = normalizeArabic(book.title).toLowerCase();
-        const normAuthor = normalizeArabic(book.brand).toLowerCase();
-        return regex.test(normTitle) || regex.test(normAuthor);
+        const hay = norm([book.title, book.brand, book.category, book.description].join(' '));
+        return words.every(w => hay.includes(w));
     });
     renderBooksList(filtered);
 }
