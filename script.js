@@ -3,7 +3,8 @@
 // إعدادات الربط مع Supabase
 const supabaseUrl = APP_CONFIG.SUPABASE_URL;
 const supabaseKey = APP_CONFIG.SUPABASE_ANON_KEY; 
-const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
+// الموقع للعميلات دايماً زائر عادي: مفيش جلسة محفوظة (حتى لو لوحة الأدمن مفتوحة على نفس المتصفح)
+const _supabase = supabase.createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 window.BESAN_SUPABASE = _supabase;
 
 // متغيرات الحالة العامة للموقع
