@@ -1,5 +1,5 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v25';
+const CACHE_NAME = 'besan-client-shell-v26';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',

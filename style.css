@@ -1630,3 +1630,9 @@ footer.besan-footer .besan-dev-credit a, footer.besan-footer .besan-dev-credit a
 /* الدعم يظهر فوق كارت نجاح الطلب لحظة تسجيل الطلب */
 .support-drawer.over-pay{z-index:100020}
 .drawer-overlay.over-pay{z-index:100018}
+
+
+/* شاشة دخول الدعم: مدمجة ومثبتة تحت من غير مساحة فاضية، وبدون صندوق كتابة قبل الدخول */
+.support-drawer.logged-out{height:auto!important;max-height:85vh;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+.support-drawer.logged-out>.quick-actions,.support-drawer.logged-out>.input-group{display:none!important}
+.support-drawer.logged-out #chat-auth-section{padding:12px 6px 4px!important}

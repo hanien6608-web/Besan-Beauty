@@ -1442,14 +1442,14 @@ function showSupport() {
     document.getElementById('support-tab').classList.add('active'); pushNavigationState('support');
     if (chatSess()) {
         document.getElementById('chat-auth-section').style.display = 'none'; document.getElementById('end-chat-btn').style.display = 'block';
-        document.getElementById('chat-body').style.display = 'flex';
+        document.getElementById('chat-body').style.display = 'flex'; document.getElementById('support-drawer').classList.remove('logged-out');
         supportNewCount = 0; localStorage.setItem('supportNewCount', 0); markSeenNow(); updateGlobalSupportCount();
         if (_chatPoll) loadChatHistory(); else startChatSync();
         flushOutbox();
         if (window.besanCustomerPushInit) besanCustomerPushInit(true);
     } else {
         document.getElementById('chat-auth-section').style.display = 'block'; document.getElementById('end-chat-btn').style.display = 'none';
-        document.getElementById('chat-body').style.display = 'none';
+        document.getElementById('chat-body').style.display = 'none'; document.getElementById('support-drawer').classList.add('logged-out');
     }
 }
 
