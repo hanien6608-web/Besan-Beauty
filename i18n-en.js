@@ -181,7 +181,59 @@
     }
   }
 
+
+  /* ---------- 5) Static page text (footer policy, support drawer, help modal) ---------- */
+  const STATIC = {
+    'ضمان وصول الإشعارات ✨': 'Make sure you get notifications ✨',
+    'لكي تصلكِ رسائل الدعم الفني فوراً حتى والتطبيق مغلق، يرجى اتباع الآتي:': 'To receive support messages instantly even when the app is closed, please follow these steps:',
+    '1️⃣ اضغطي مطولاً على أيقونة التطبيق في الشاشة الرئيسية.': '1️⃣ Long-press the app icon on your home screen.',
+    '2️⃣ اختاري': '2️⃣ Choose', 'معلومات التطبيق (App Info)': 'App Info',
+    '3️⃣ ادخلي على': '3️⃣ Open', 'البطارية (Battery)': 'Battery',
+    '4️⃣ اختاري وضع': '4️⃣ Choose', '"غير مقيد" (Unrestricted)': '"Unrestricted"',
+    'شكراً لاختياركم Besan Beauty': 'Thank you for choosing Besan Beauty',
+    'سيتم الرد عليكم في أقرب وقت.': 'We will reply as soon as possible.',
+    'للإطلاع على الأسعار انظروا للكتالوج ♥️': 'For prices, please see the catalog ♥️',
+    'تعليمات مهمة 🚩': 'Important instructions 🚩',
+    'مافيش أي أوردر بدون ديبوزت.': 'No order without a deposit.',
+    'في حالة تأكيد الأوردر برجاء إرسال عنوان كامل.': 'When confirming your order, please send your full address.',
+    'رقم موبايل واحد فقط ويكون متاح وفيه شبكة.': 'One mobile number only, available and with signal.',
+    'التوصيل بيكون من ٩ لـ ٢ وبعض المناطق ٤.': 'Delivery is between 9 and 2, and until 4 in some areas.',
+    'التوصيل عن طريق البريد المصري – خدمة وصلها.': 'Delivery is through Egypt Post (Wasalha service).',
+    'لا يوجد استبدال أو استرجاع لأي أوردر ‼️': 'No exchange or return on any order ‼️',
+    'ماتنسوش تعملولنا فولو على': "Don't forget to follow us on",
+    'صفحة Instagram': 'Instagram page', 'كتالوج WhatsApp': 'WhatsApp catalog',
+    'سجّلتي طلب ومحتاجة ترفعي إيصال الدفع؟': 'Placed an order and need to upload your payment receipt?',
+    'من فضلكِ أدخلي رقم الموبايل لبدء الدردشة مع الدعم الفني ✨': 'Please enter your mobile number to start chatting with support ✨',
+    'أهلاً بكِ! ✨ كيف يمكننا مساعدتكِ اليوم؟': 'Welcome! ✨ How can we help you today?',
+    'الدعم يكتب الآن...': 'Support is typing...', 'العميل يكتب الآن...': 'Customer is typing...',
+    'الأوردر بتاعي لسه موصلش؟ 🚚': "Hasn't my order arrived yet? 🚚",
+    'بدء المحادثة': 'Start chat',
+    'ج.م': 'EGP'
+  };
+  const ORIGINALS = new WeakMap();
+  const clean = function (t) { return String(t).replace(/\s+/g, ' ').trim(); };
+  function translateDom(toEnglish) {
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const p = node.parentElement;
+      if (!p || p.tagName === 'SCRIPT' || p.tagName === 'STYLE') continue;
+      if (toEnglish) {
+        const key = clean(node.textContent);
+        const en = STATIC[key];
+        if (en && !ORIGINALS.has(node)) {
+          const raw = node.textContent;
+          ORIGINALS.set(node, raw);
+          node.textContent = raw.match(/^\s*/)[0] + en + raw.match(/\s*$/)[0];
+        }
+      } else if (ORIGINALS.has(node)) {
+        node.textContent = ORIGINALS.get(node); ORIGINALS.delete(node);
+      }
+    }
+  }
+
   window.BESAN_EN = {
+    translateDom: translateDom,
     ui: UI,
     provinces: PROVINCES,
     products: PRODUCT_EN,

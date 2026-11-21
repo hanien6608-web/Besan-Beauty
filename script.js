@@ -1876,3 +1876,14 @@ function closeTopmostDrawer() {
     else if (cartDrawer && cartDrawer.classList.contains('open')) closeCart();
 }
 
+
+
+// translate static page text (footer policy, support drawer, help modal) with the language toggle
+(function () {
+    if (!window.BESAN_EN) return;
+    const prev = toggleLanguage;
+    toggleLanguage = async function () {
+        await prev.apply(this, arguments);
+        window.BESAN_EN.translateDom(document.documentElement.lang === 'en');
+    };
+})();

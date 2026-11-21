@@ -1566,3 +1566,6 @@ div:has(> #dev-badge) .dev-social-icon{color:#fff!important}
 @media (max-width: 600px) {
     .price-cart-container { padding-bottom: 46px; }
 }
+
+/* keep the line breaks the owner typed in product descriptions */
+.full-desc, .book-card p { white-space: pre-line; }
