@@ -8,6 +8,7 @@ const _supabase = supabase.createClient(supabaseUrl, supabaseKey, { auth: { pers
 window.BESAN_SUPABASE = _supabase;
 
 // متغيرات الحالة العامة للموقع
+function LT(ar, en) { return document.documentElement.lang === 'en' ? en : ar; }
 let cart = []; // مصفوفة لتخزين عناصر السلة
 let wishlist = JSON.parse(localStorage.getItem('wishlist')) || []; // قائمة المفضلة من التخزين المحلي
 let wishlistNewCount = parseInt(localStorage.getItem('wishlistNewCount')) || 0; // عداد المفضلة الجديد
@@ -312,7 +313,7 @@ async function getMyLibraryData() {
 
     if (error) {
         console.error("Error connecting:", error.message);
-        container.innerHTML = `<div class="error-msg">فشل الاتصال بسوبابيز. تأكدي من الـ URL والـ Key.</div>`;
+        container.innerHTML = `<div class="error-msg">${LT('تعذّر تحميل المنتجات دلوقتي. حدّثي الصفحة بعد شوية.', 'We could not load the products right now. Please refresh the page in a moment.')}</div>`;
         return;
     }
 
@@ -386,7 +387,11 @@ function renderBooksList(data) {
                     ${msg}
                  </div>`;
             } else {
-                 container.innerHTML = `<div class="error-msg">لا توجد منتجات بعد! أضيفي منتجات في سوبابيز أولاً.</div>`;
+                 const q = ((document.getElementById('main-search') || {}).value || '').trim() || ((document.getElementById('sticky-search') || {}).value || '').trim();
+                 const emptyMsg = q ? LT('لا توجد منتجات مطابقة لبحثك.', 'No products match your search.')
+                     : (activeCat !== 'الكل' ? LT('لا توجد منتجات في هذا القسم حالياً.', 'No products in this section right now.')
+                     : LT('منتجات جديدة قريباً ✨', 'New products coming soon ✨'));
+                 container.innerHTML = `<div class="error-msg">${emptyMsg}</div>`;
             }
         }
         return;
@@ -435,11 +440,11 @@ function renderBookCard(book, index) {
             <div class="image-box">
                 ${has2nd ? `<div class="hover-trigger trigger-right"></div><div class="hover-trigger trigger-left"></div>` : ''}
                 <img src="${img1}" class="main-img" loading="lazy" alt="${displayTitle} - ${displayAuthor}" itemprop="image"> <!-- تحميل ذكي حسب الصف -->
-                ${has2nd ? `<img src="${img2}" class="hover-img" alt="صورة إضافية لـ ${displayTitle}">` : ''}
+                ${has2nd ? `<img src="${img2}" class="hover-img" alt="${LT('صورة إضافية لـ', 'Additional photo of')} ${displayTitle}">` : ''}
                 <div class="image-indicators"><div class="dot active"></div>${has2nd ? `<div class="dot"></div>` : ''}</div>
             </div>
             <div class="book-actions">
-                <span id="wish-btn-${book.id}" class="action-icon ${isInWishlist ? 'active' : ''}" title="المفضلة" 
+                <span id="wish-btn-${book.id}" class="action-icon ${isInWishlist ? 'active' : ''}" title="${LT('المفضلة', 'Wishlist')}" 
                       onclick="event.stopPropagation(); toggleWishlist(${book.id})">
                     <i id="wish-icon-${book.id}" class="bi bi-bookmark-heart"></i>
                 </span>
@@ -545,7 +550,7 @@ async function showBookDetails(id, shouldPush = true) {
             <div class="details-image-container" id="details-img-container">
                 <div class="details-slider" id="details-slider">
                     <img src="${img1}" alt="${book.title} - ${book.brand}">
-                    ${has2nd ? `<img src="${img2}" alt="عرض إضافي لـ ${book.title}">` : ''}
+                    ${has2nd ? `<img src="${img2}" alt="${LT('عرض إضافي لـ', 'Additional view of')} ${book.title}">` : ''}
                 </div>
                 ${has2nd ? `
                 <button class="slider-arrow arrow-prev" onclick="event.stopPropagation(); slideDetails(0)"><i class="bi bi-chevron-right"></i></button>
@@ -634,7 +639,7 @@ function closeBookDetails(shouldGoBack = true) {
     setTimeout(() => {
         detailsPage.style.display = 'none';
         window.currentOpenedBookId = null;
-        document.title = "Besan Beauty - عالم الجمال والعطور"; // إعادة العنوان الأصلي
+        document.title = LT("Besan Beauty - عالم الجمال والعطور", "Besan Beauty - World of Beauty & Fragrance"); // إعادة العنوان الأصلي
         window.history.replaceState({ view: 'home' }, "", window.location.pathname); // تنظيف الرابط
     }, 500);
     removeLockScroll();
@@ -1114,12 +1119,12 @@ async function confirmOrder() {
     try {
         confirmBtn.disabled = true; confirmBtn.innerHTML = `${t.processingOrder} <i class="bi bi-hourglass-split"></i>`;
         const { data: placed, error } = await _supabase.rpc('place_order', { p: orderData });
-        if (error || !placed) throw new Error(`خطأ من سوبابيز: ${error ? error.message : ''}`);
+        if (error || !placed) { console.error('order insert failed', error); throw new Error('order-failed'); }
         chatSessionStart(placed);
         alert(t.orderSuccess);
         resetOrderForm();
         closeCart();
-    } catch (err) { alert(`${t.orderError} ${err.message}`); }
+    } catch (err) { console.error(err); alert(`${t.orderError} ${LT('جرّبي تاني بعد شوية، أو كلمينا على واتساب.', 'Please try again in a moment, or contact us on WhatsApp.')}`); }
     finally { confirmBtn.disabled = false; confirmBtn.innerHTML = `${t.confirmOrderBtn} <i class="bi bi-bag-check-fill"></i>`; }
 }
 
@@ -1467,17 +1472,17 @@ async function identifyChatUser() {
     const codeInput = document.getElementById('chat-code-input');
     const errorDiv = document.getElementById('chat-auth-error');
     const btn = phoneInput.closest('#chat-auth-section').querySelector('.confirm-order-btn');
-    const wa = '<a href="https://wa.me/201067826270" target="_blank" style="color:inherit;font-weight:bold;text-decoration:underline">كلمينا على واتساب</a>';
+    const wa = '<a href="https://wa.me/201067826270" target="_blank" style="color:inherit;font-weight:bold;text-decoration:underline">' + LT('كلمينا على واتساب', 'message us on WhatsApp') + '</a>';
     let cleanPhone = phoneInput.value.trim().replace(/\D/g, '');
     if (cleanPhone.startsWith('20') && cleanPhone.length > 11) cleanPhone = cleanPhone.substring(2);
     if (!cleanPhone.startsWith('0') && cleanPhone.length === 10) cleanPhone = '0' + cleanPhone;
     const code = (codeInput ? codeInput.value : '').trim().replace(/\D/g, '');
     errorDiv.style.display = 'none'; errorDiv.innerHTML = '';
     const showErr = h => { errorDiv.innerHTML = h; errorDiv.style.display = 'block'; };
-    if (!/^(010|011|012|015)[0-9]{8}$/.test(cleanPhone)) { showErr('<i class="bi bi-exclamation-triangle-fill"></i> يرجى إدخال رقم موبايل مصري صحيح (11 رقم) 📱'); return; }
-    if (!/^[0-9]{6}$/.test(code)) { showErr('<i class="bi bi-exclamation-triangle-fill"></i> اكتبي الكود السري المكوّن من 6 أرقام 🔑'); return; }
+    if (!/^(010|011|012|015)[0-9]{8}$/.test(cleanPhone)) { showErr('<i class="bi bi-exclamation-triangle-fill"></i> ' + LT('يرجى إدخال رقم موبايل مصري صحيح (11 رقم) 📱', 'Please enter a valid Egyptian mobile number (11 digits) 📱')); return; }
+    if (!/^[0-9]{6}$/.test(code)) { showErr('<i class="bi bi-exclamation-triangle-fill"></i> ' + LT('اكتبي الكود السري المكوّن من 6 أرقام 🔑', 'Enter your 6-digit secret code 🔑')); return; }
     try {
-        btn.disabled = true; btn.innerHTML = 'جاري التحقق... <i class="bi bi-hourglass-split"></i>';
+        btn.disabled = true; btn.innerHTML = LT('جاري التحقق...', 'Verifying...') + ' <i class="bi bi-hourglass-split"></i>';
         const r = await fetch(supabaseUrl + '/functions/v1/chat-login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey }, body: JSON.stringify({ phone: cleanPhone, code }) });
         const d = await r.json().catch(() => null);
         if (d && d.ok && d.token) {
@@ -1486,16 +1491,16 @@ async function identifyChatUser() {
             codeInput.value = ''; chatStopSync();
             showSupport();
         } else if (d && d.error === 'locked') {
-            showErr('<i class="bi bi-lock-fill"></i> الدخول موقوف مؤقتًا بعد محاولات غلط كتير. جرّبي بعد 15 دقيقة، أو ' + wa + ' وهنتحقق منك ونساعدك.');
+            showErr('<i class="bi bi-lock-fill"></i> ' + LT('الدخول موقوف مؤقتًا بعد محاولات غلط كتير. جرّبي بعد 15 دقيقة، أو ' + wa + ' وهنتحقق منك ونساعدك.', 'Sign-in is paused for a while after too many wrong attempts. Try again in 15 minutes, or ' + wa + ' and we will verify you and help.'));
         } else if (d && d.error === 'invalid') {
-            showErr('<i class="bi bi-exclamation-triangle-fill"></i> الموبايل أو الكود غير صحيح. لو ضاع الكود ' + wa + ' وهنتحقق منك ونرجعهولك.');
+            showErr('<i class="bi bi-exclamation-triangle-fill"></i> ' + LT('الموبايل أو الكود غير صحيح. لو ضاع الكود ' + wa + ' وهنتحقق منك ونرجعهولك.', 'The mobile number or code is incorrect. If you lost the code, ' + wa + ' and we will verify you and send it again.'));
         } else {
-            showErr('حدث خطأ بسيط في الاتصال، حاولي مرة أخرى.');
+            showErr(LT('حدث خطأ بسيط في الاتصال، حاولي مرة أخرى.', 'A small connection error occurred. Please try again.'));
         }
     } catch (err) {
-        console.error(err); showErr('حدث خطأ بسيط في الاتصال، حاولي مرة أخرى.');
+        console.error(err); showErr(LT('حدث خطأ بسيط في الاتصال، حاولي مرة أخرى.', 'A small connection error occurred. Please try again.'));
     } finally {
-        btn.disabled = false; btn.innerHTML = 'دخول';
+        btn.disabled = false; btn.innerHTML = LT('دخول', 'Sign in');
     }
 }
 
@@ -1614,7 +1619,7 @@ async function loadChatHistory() {
             rows.forEach(m => { if (m.client_id) renderedCids.add(m.client_id); appendMessage(m.text, m.sender, m.client_id); });
             _lastAdminCount = rows.filter(x => x.sender === 'admin').length;
         } else {
-            appendMessage('أهلاً بكِ مجدداً! ✨ كيف يمكننا مساعدتكِ؟', 'admin');
+            appendMessage(LT('أهلاً بكِ مجدداً! ✨ كيف يمكننا مساعدتكِ؟', 'Welcome back! ✨ How can we help you?'), 'admin');
         }
         getOutbox().filter(i => !renderedCids.has(i.cid)).forEach(i => { renderedCids.add(i.cid); appendMessage(i.text, 'user', i.cid, 'pending'); });
         setTimeout(() => { chatBody.scrollTop = chatBody.scrollHeight; }, 100);
@@ -1751,9 +1756,9 @@ async function triggerBrowserNotification(messageText) {
 
         if ('serviceWorker' in navigator) {
             const reg = await navigator.serviceWorker.ready;
-            reg.showNotification("Besan Beauty - رسالة جديدة", options);
+            reg.showNotification(LT("Besan Beauty - رسالة جديدة", "Besan Beauty - New message"), options);
         } else {
-            new Notification("Besan Beauty - رسالة جديدة", options);
+            new Notification(LT("Besan Beauty - رسالة جديدة", "Besan Beauty - New message"), options);
         }
     }
 }
@@ -1813,14 +1818,14 @@ function appendMessage(text, side, cid, state) {
         const box = document.createElement('div');
         box.style.cssText = 'margin-top:10px;border:2px dashed #f6006f;border-radius:14px;padding:10px;text-align:center;background:#fff;color:#333';
         if (code) {
-            box.innerHTML = '<div style="font-size:.8rem">كود دخولك السري (٦ أرقام)</div><div class="code-digits" style="font-size:2rem;font-weight:800;letter-spacing:6px;direction:ltr"></div>' +
-              '<div style="margin-top:4px;font-size:.78rem;color:#8a3a62;line-height:1.5">📸 صوّري الشاشة (سكرين شوت) علشان تحتفظي بالكود</div>' +
-              '<button type="button" class="confirm-order-btn code-copy" style="padding:6px 22px;margin-top:6px;font-size:.85rem;width:auto">نسخ الكود</button>' +
-              '<div style="margin-top:8px;padding:8px;border-radius:10px;background:#fff6d6;color:#7a5b00;font-size:.75rem;line-height:1.6">احفظي الكود ده. بعد 72 ساعة هتحتاجيه مع رقم موبايلك علشان تفتحي محادثة الطلب ده تاني.</div>';
+            box.innerHTML = '<div style="font-size:.8rem">' + LT('كود دخولك السري (٦ أرقام)', 'Your secret login code (6 digits)') + '</div><div class="code-digits" style="font-size:2rem;font-weight:800;letter-spacing:6px;direction:ltr"></div>' +
+              '<div style="margin-top:4px;font-size:.78rem;color:#8a3a62;line-height:1.5">📸 ' + LT('صوّري الشاشة (سكرين شوت) علشان تحتفظي بالكود', 'Take a screenshot to keep the code') + '</div>' +
+              '<button type="button" class="confirm-order-btn code-copy" style="padding:6px 22px;margin-top:6px;font-size:.85rem;width:auto">' + LT('نسخ الكود', 'Copy code') + '</button>' +
+              '<div style="margin-top:8px;padding:8px;border-radius:10px;background:#fff6d6;color:#7a5b00;font-size:.75rem;line-height:1.6">' + LT('احفظي الكود ده. بعد 72 ساعة هتحتاجيه مع رقم موبايلك علشان تفتحي محادثة الطلب ده تاني.', 'Save this code. After 72 hours you will need it with your mobile number to open this order chat again.') + '</div>';
             box.querySelector('.code-digits').textContent = code;
-            box.querySelector('.code-copy').addEventListener('click', ev => { const b = ev.currentTarget; const done = () => { b.textContent = 'تم النسخ ✓'; setTimeout(() => { b.textContent = 'نسخ الكود'; }, 2000); }; try { navigator.clipboard.writeText(code).then(done, done); } catch (e) { done(); } });
+            box.querySelector('.code-copy').addEventListener('click', ev => { const b = ev.currentTarget; const done = () => { b.textContent = LT('تم النسخ ✓', 'Copied ✓'); setTimeout(() => { b.textContent = LT('نسخ الكود', 'Copy code'); }, 2000); }; try { navigator.clipboard.writeText(code).then(done, done); } catch (e) { done(); } });
         } else {
-            box.innerHTML = '<div style="font-size:.8rem">🔑 كود الدخول السري ظهر وقت تسجيل الطلب. لو ضاع كلمي الفريق على واتساب وهنتحقق منك.</div>';
+            box.innerHTML = '<div style="font-size:.8rem">' + LT('🔑 كود الدخول السري ظهر وقت تسجيل الطلب. لو ضاع كلمي الفريق على واتساب وهنتحقق منك.', '🔑 Your secret login code was shown when you placed the order. If you lost it, message the team on WhatsApp and we will verify you.') + '</div>';
         }
         msgDiv.appendChild(box);
     } else {

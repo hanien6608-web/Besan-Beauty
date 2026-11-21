@@ -208,9 +208,16 @@
     'الدعم يكتب الآن...': 'Support is typing...', 'العميل يكتب الآن...': 'Customer is typing...',
     'الأوردر بتاعي لسه موصلش؟ 🚚': "Hasn't my order arrived yet? 🚚",
     'بدء المحادثة': 'Start chat', 'إنهاء الدردشة': 'End chat',
+    'للاستعلام عن الطلب': 'Check on your order',
+    'ادخلي رقم الموبايل والكود السري (٦ أرقام) اللي ظهر لكِ في رسالة الطلب ✨': 'Enter your mobile number and the 6-digit secret code shown in your order message ✨',
+    'دخول': 'Sign in',
+    'العودة للقمة': 'Back to top', 'فيس بوك': 'Facebook', 'إنستجرام': 'Instagram', 'واتساب': 'WhatsApp',
+    'كتالوج واتساب': 'WhatsApp catalog', 'التواصل مع المطوّرة': 'Contact the developer',
+    'رقم الموبايل (11 رقم)': 'Mobile number (11 digits)', 'الكود السري (6 أرقام)': 'Secret code (6 digits)',
     'ج.م': 'EGP'
   };
   const ORIGINALS = new WeakMap();
+  const ATTR_ORIGINALS = new WeakMap();
   const clean = function (t) { return String(t).replace(/\s+/g, ' ').trim(); };
   function translateDom(toEnglish) {
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -230,6 +237,18 @@
         node.textContent = ORIGINALS.get(node); ORIGINALS.delete(node);
       }
     }
+    // attributes (tooltips, placeholders, aria labels) outside product content
+    const ATTRS = ['title', 'placeholder', 'aria-label'];
+    document.querySelectorAll('[title],[placeholder],[aria-label]').forEach(function (el) {
+      ATTRS.forEach(function (at) {
+        const cur = el.getAttribute(at); if (cur == null) return;
+        let store = ATTR_ORIGINALS.get(el);
+        if (toEnglish) {
+          const en = STATIC[clean(cur)];
+          if (en && !(store && store[at] != null)) { if (!store) { store = {}; ATTR_ORIGINALS.set(el, store); } store[at] = cur; el.setAttribute(at, en); }
+        } else if (store && store[at] != null) { el.setAttribute(at, store[at]); delete store[at]; }
+      });
+    });
   }
 
   window.BESAN_EN = {
