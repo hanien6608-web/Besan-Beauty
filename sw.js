@@ -1,5 +1,5 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v15';
+const CACHE_NAME = 'besan-client-shell-v16';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',
@@ -81,19 +81,23 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const rawUrl = event.notification.data?.url || APP_START;
+  // resolve against the SW scope (the /Besan-Beauty/ folder), not the bare origin, or the link 404s on GitHub Pages
+  const scope = self.registration.scope;
+  const data = event.notification.data || {};
+  let rawUrl = data.url || APP_START;
+  if (data.type === 'customer-reply') rawUrl = './index.html?openSupport=true';
   let target;
   try {
-    target = new URL(rawUrl, self.location.origin);
-    if (target.origin !== self.location.origin) target = new URL(APP_START, self.location.origin);
+    target = new URL(rawUrl, scope);
+    if (!target.href.startsWith(scope)) target = new URL(APP_START, scope);
   } catch (_) {
-    target = new URL(APP_START, self.location.origin);
+    target = new URL(APP_START, scope);
   }
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       for (const client of windows) {
-        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+        if (client.url.startsWith(scope) && 'focus' in client) {
           return client.focus().then(() => client.navigate(target.href));
         }
       }
