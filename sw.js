@@ -1,5 +1,5 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v23';
+const CACHE_NAME = 'besan-client-shell-v24';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',
@@ -76,6 +76,7 @@ self.addEventListener('push', (event) => {
     // customer replies: one notification per push (a shared tag makes a burst replace itself and re-alert only once)
     tag: data.type === 'customer-reply' ? ('besan-customer-reply-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)) : (data.tag || ('besan-client-' + Date.now())),
     renotify: true,
+    vibrate: [300, 100, 300, 100, 400],
     data: { url: data.url || APP_START, type: data.type || '' }
   }));
 });
