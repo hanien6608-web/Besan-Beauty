@@ -8,6 +8,8 @@ const _supabase = supabase.createClient(supabaseUrl, supabaseKey, { auth: { pers
 window.BESAN_SUPABASE = _supabase;
 
 // متغيرات الحالة العامة للموقع
+// Storefront is Arabic-only: force Arabic and drop any old English preference/cache
+(function () { try { document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl'; ['lang','language','site_lang','besan_lang','autoTranslationCache_v2'].forEach(function (k) { localStorage.removeItem(k); sessionStorage.removeItem(k); }); } catch (e) {} })();
 function LT(ar, en) { return document.documentElement.lang === 'en' ? en : ar; }
 let cart = []; // مصفوفة لتخزين عناصر السلة
 let wishlist = JSON.parse(localStorage.getItem('wishlist')) || []; // قائمة المفضلة من التخزين المحلي
