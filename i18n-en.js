@@ -208,6 +208,7 @@
     'الدعم يكتب الآن...': 'Support is typing...', 'العميل يكتب الآن...': 'Customer is typing...',
     'الأوردر بتاعي لسه موصلش؟ 🚚': "Hasn't my order arrived yet? 🚚",
     'بدء المحادثة': 'Start chat', 'إنهاء الدردشة': 'End chat',
+    'إغلاق': 'Close',
     'للاستعلام عن الطلب': 'Check on your order',
     'ادخلي رقم الموبايل والكود السري (٦ أرقام) اللي ظهر لكِ في رسالة الطلب ✨': 'Enter your mobile number and the 6-digit secret code shown in your order message ✨',
     'دخول': 'Sign in',
