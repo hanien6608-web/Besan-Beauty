@@ -137,9 +137,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // تفعيل المزامنة الخلفية للشات إذا كان المستخدم معروفاً
     chatAutoExpiryCheck();
-    const savedPhone = localStorage.getItem('user_chat_phone');
     updateGlobalSupportCount();
-    if (savedPhone) startChatSync(savedPhone);
+    if (chatSess()) startChatSync();
     
     // فحص إذا كان المستخدم قادماً من إشعار (والموقع كان مغلقاً)
     if (urlParams.get('openSupport') === 'true') {
@@ -1113,9 +1112,9 @@ async function confirmOrder() {
 
     try {
         confirmBtn.disabled = true; confirmBtn.innerHTML = `${t.processingOrder} <i class="bi bi-hourglass-split"></i>`;
-        const { error } = await _supabase.from('orders').insert([orderData]);
-        if (error) throw new Error(`خطأ من سوبابيز: ${error.message}`);
-        chatAutoIdentify(orderData.customer_phone);
+        const { data: placed, error } = await _supabase.rpc('place_order', { p: orderData });
+        if (error || !placed) throw new Error(`خطأ من سوبابيز: ${error ? error.message : ''}`);
+        chatSessionStart(placed);
         alert(t.orderSuccess);
         resetOrderForm();
         closeCart();
@@ -1299,12 +1298,12 @@ async function payConfirm(withReceipt) {
     const lock = on => { PAY.busy = on; submitBtn.disabled = on; laterBtn.disabled = on; if (on) submitBtn.textContent = payT('sending'); else submitBtn.textContent = payT(PAY.mode === 'order' ? 'submit' : 'submitAttach'); };
     try {
         if (PAY.mode === 'attach') {
-            const phone = document.getElementById('pay-phone').value.trim();
-            if (!/^(010|011|012|015)[0-9]{8}$/.test(phone)) { payError(payT('needPhone')); return; }
+            const sess = chatSess();
+            if (!sess) { payError(document.documentElement.lang === 'en' ? 'Please sign in from Support (phone + 6-digit code) first.' : 'ادخلي الأول من مركز الدعم بالموبايل والكود السري المكوّن من 6 أرقام، وبعدها ارفعي الإيصال.'); return; }
             if (!PAY.file) { payError(payT('needFile')); return; }
             lock(true);
             const path = await payUploadReceipt(PAY.file);
-            const { data, error } = await _supabase.rpc('attach_receipt', { p_phone: phone, p_path: path });
+            const { data, error } = await _supabase.rpc('chat_attach_receipt_s', { p_token: sess.token, p_path: path });
             if (error) throw error;
             if (!data) { lock(false); payError(payT('noOrder')); return; }
             localStorage.removeItem('pendingReceiptPhone'); { const pp = pendingLoad(); if (pp) { pp.receiptUploaded = true; localStorage.setItem(PENDING_KEY, JSON.stringify(pp)); } } renderPendingBox();
@@ -1315,8 +1314,8 @@ async function payConfirm(withReceipt) {
         let path = null;
         if (withReceipt) path = await payUploadReceipt(PAY.file);
         const row = Object.assign({}, PAY.orderData, { status: 'awaiting_payment', deposit_amount: PAY.deposit, receipt_path: path });
-        const { error } = await _supabase.from('orders').insert([row]);
-        if (error) throw error;
+        const { data: placed, error } = await _supabase.rpc('place_order', { p: row });
+        if (error || !placed) throw error || new Error('order');
         const od = PAY.orderData;
         if (!withReceipt) localStorage.setItem('pendingReceiptPhone', od.customer_phone); else localStorage.removeItem('pendingReceiptPhone');
         const info = { phone: od.customer_phone, createdAt: Date.now(), receiptUploaded: !!withReceipt, province: od.province,
@@ -1324,7 +1323,7 @@ async function payConfirm(withReceipt) {
             items: (od.items || []).map(i => ({ title: i.title, qty: i.qty, price: i.price })) };
         localStorage.setItem(PENDING_KEY, JSON.stringify(info));
         const detail = pendingHTML(info, false);
-        chatAutoIdentify(od.customer_phone);   // الدعم يتعرف عليها تلقائياً 72 ساعة
+        chatSessionStart(placed);   // دخول تلقائي للدعم 72 ساعة (جلسة على السيرفر)
         resetOrderForm(); closeCart(); renderPendingBox();
         payShowDone(payT('doneTitle'), payT(withReceipt ? 'doneReceipt' : 'doneNoReceipt'), detail); lock(false);
     } catch (err) {
@@ -1375,28 +1374,35 @@ function pendingHTML(p, withBtn) {
         ${(withBtn && !p.receiptUploaded) ? `<button type="button" class="pm-btn" onclick="openReceiptOnly()"><i class="bi bi-paperclip"></i> ${L.btn}</button>` : ''}`;
 }
 
-/* ---------- التعرف التلقائي على العميلة في الدعم لمدة 72 ساعة بعد الطلب ---------- */
-const CHAT_AUTO_MS = 72 * 3600 * 1000;
-function chatPhoneKey(p) { return String(p || '').replace(/\D/g, '').slice(-10); }
-function chatAutoExpiryCheck() {
-    const until = parseInt(localStorage.getItem('chat_auto_until') || '0', 10);
-    if (until && Date.now() > until) {
-        if (window.besanCustomerPushOff) besanCustomerPushOff();
-        localStorage.removeItem('user_chat_phone'); localStorage.removeItem('chat_auto_until');
-        if (chatSubscription) { try { _supabase.removeAllChannels(); } catch (e) {} chatSubscription = null; }
-    }
-}
-function chatAutoIdentify(phone) {
+/* ---------- جلسة الدعم: تتحقق من السيرفر وتنتهي بعد 72 ساعة ---------- */
+const SESS_KEY = 'chat_session';
+function chatSess() {
     try {
-        phone = String(phone || '').trim(); if (!phone) return;
-        const cur = localStorage.getItem('user_chat_phone');
-        const isAuto = !!localStorage.getItem('chat_auto_until');
-        const same = !!cur && chatPhoneKey(cur) === chatPhoneKey(phone);
-        if (same && !isAuto) return;                      // دخلت الشات بنفسها قبل كده: نسيبها زي ما هي
-        if (cur && !same && chatSubscription) { try { _supabase.removeAllChannels(); } catch (e) {} chatSubscription = null; }
-        localStorage.setItem('user_chat_phone', phone);
-        localStorage.setItem('chat_auto_until', String(Date.now() + CHAT_AUTO_MS));   // بتتجدد مع كل طلب جديد
-        if (!chatSubscription) startChatSync(phone);       // عشان رسالة الطلب توصلها وتظهر على أيقونة الدعم
+        const o = JSON.parse(localStorage.getItem(SESS_KEY) || 'null');
+        if (o && o.token && Date.parse(o.expires_at) > Date.now()) return o;
+    } catch (e) {}
+    return null;
+}
+function chatSessSave(o) { try { localStorage.setItem(SESS_KEY, JSON.stringify(o)); } catch (e) {} }
+function chatCodeFor(oid) { try { return localStorage.getItem('chat_code_' + oid) || ''; } catch (e) { return ''; } }
+function chatStopSync() { if (_chatPoll) { clearInterval(_chatPoll); _chatPoll = null; } chatSubscription = null; try { rtStop(); } catch (e) {} }
+function chatSessClear() {
+    if (window.besanCustomerPushOff) besanCustomerPushOff();
+    localStorage.removeItem(SESS_KEY); localStorage.removeItem(OUTBOX_KEY); localStorage.removeItem(SEEN_KEY);
+    chatStopSync();
+}
+function chatAutoExpiryCheck() {
+    const raw = localStorage.getItem(SESS_KEY);
+    if (raw && !chatSess()) { chatSessClear(); const cb = document.getElementById('chat-body'); if (cb) cb.querySelectorAll('.msg').forEach(m => m.remove()); }
+}
+function chatSessionStart(placed) {
+    try {
+        if (!placed || !placed.token) return;
+        const old = chatSess();
+        if (old && old.token !== placed.token) { chatStopSync(); localStorage.removeItem(OUTBOX_KEY); }
+        chatSessSave({ token: placed.token, order_id: placed.id || placed.order_id, expires_at: placed.expires_at });
+        if (placed.code) { localStorage.setItem('chat_code_' + (placed.id || placed.order_id), placed.code); }
+        startChatSync();
     } catch (e) { console.error(e); }
 }
 
@@ -1433,26 +1439,17 @@ function showSupport() {
 
     document.querySelectorAll('.bottom-bar-item').forEach(i => i.classList.remove('active'));
     document.getElementById('support-tab').classList.add('active'); pushNavigationState('support');
-    const savedPhone = localStorage.getItem('user_chat_phone'); const cartPhoneInput = document.getElementById('customer-phone');
-    const cartPhone = cartPhoneInput ? cartPhoneInput.value.trim().replace(/\D/g, '') : ''; const phoneToUse = savedPhone || cartPhone;
-    if (phoneToUse) {
+    if (chatSess()) {
         document.getElementById('chat-auth-section').style.display = 'none'; document.getElementById('end-chat-btn').style.display = 'block';
         document.getElementById('chat-body').style.display = 'flex';
-        // فتح الشات = قراءة الرسائل: نصفّر العدّاد، ونحدّث المحادثة من السيرفر، ونبعت أي رسالة معلّقة
         supportNewCount = 0; localStorage.setItem('supportNewCount', 0); markSeenNow(); updateGlobalSupportCount();
-        if (chatSubscription) loadChatHistory(phoneToUse.replace(/\D/g, '')); else startChatSync(phoneToUse);
+        if (_chatPoll) loadChatHistory(); else startChatSync();
         flushOutbox();
-        if (window.besanCustomerPushInit) besanCustomerPushInit(phoneToUse.replace(/\D/g, ''));
+        if (window.besanCustomerPushInit) besanCustomerPushInit(true);
     } else {
         document.getElementById('chat-auth-section').style.display = 'block'; document.getElementById('end-chat-btn').style.display = 'none';
         document.getElementById('chat-body').style.display = 'none';
     }
-
-    // مراقبة الكتابة
-    document.getElementById('chat-input').addEventListener('input', () => {
-        if (!chatSubscription) return;
-        chatSubscription.send({ type: 'broadcast', event: 'typing', payload: { typing: true, sender: 'user' } });
-    });
 }
 
 function closeSupport(shouldGoBack = true) {
@@ -1465,63 +1462,38 @@ function closeSupport(shouldGoBack = true) {
 
 async function identifyChatUser() {
     const phoneInput = document.getElementById('chat-phone-input');
-    const errorDiv = document.getElementById('chat-auth-error'); 
+    const codeInput = document.getElementById('chat-code-input');
+    const errorDiv = document.getElementById('chat-auth-error');
     const btn = phoneInput.closest('#chat-auth-section').querySelector('.confirm-order-btn');
-    const rawPhone = phoneInput.value.trim().replace(/\D/g, '');
-    
-    // إخفاء رسالة الخطأ فور بدء الكتابة مرة أخرى لتحسين التجربة
-    phoneInput.addEventListener('input', () => {
-        errorDiv.style.display = 'none';
-        errorDiv.innerHTML = '';
-    }, { once: true });
-
-    // تنظيف الرقم من أي كود دولة للحصول على الـ 11 رقم الأساسية
-    let cleanPhone = rawPhone;
+    const wa = '<a href="https://wa.me/201067826270" target="_blank" style="color:inherit;font-weight:bold;text-decoration:underline">كلمينا على واتساب</a>';
+    let cleanPhone = phoneInput.value.trim().replace(/\D/g, '');
     if (cleanPhone.startsWith('20') && cleanPhone.length > 11) cleanPhone = cleanPhone.substring(2);
     if (!cleanPhone.startsWith('0') && cleanPhone.length === 10) cleanPhone = '0' + cleanPhone;
-
-    errorDiv.style.display = 'none'; 
-    errorDiv.innerHTML = '';
-
-    if (!/^(010|011|012|015)[0-9]{8}$/.test(cleanPhone)) {
-        errorDiv.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> يرجى إدخال رقم موبايل مصري صحيح (11 رقم) 📱'; 
-        errorDiv.style.display = 'block';
-        return;
-    }
-
+    const code = (codeInput ? codeInput.value : '').trim().replace(/\D/g, '');
+    errorDiv.style.display = 'none'; errorDiv.innerHTML = '';
+    const showErr = h => { errorDiv.innerHTML = h; errorDiv.style.display = 'block'; };
+    if (!/^(010|011|012|015)[0-9]{8}$/.test(cleanPhone)) { showErr('<i class="bi bi-exclamation-triangle-fill"></i> يرجى إدخال رقم موبايل مصري صحيح (11 رقم) 📱'); return; }
+    if (!/^[0-9]{6}$/.test(code)) { showErr('<i class="bi bi-exclamation-triangle-fill"></i> اكتبي الكود السري المكوّن من 6 أرقام 🔑'); return; }
     try {
-        btn.disabled = true;
-        btn.innerHTML = 'جاري التحقق من بياناتك... <i class="bi bi-hourglass-split"></i>';
-        
-        // البحث عن الرقم بكل أشكاله الممكنة (بصفر، بدون صفر، أو جزء من الرقم)
-        const { data: primaryPhone, error } = await _supabase.rpc('get_chat_phone', { p_phone: cleanPhone });
-
-        if (error) throw error;
-
-        if (!primaryPhone) {
-            errorDiv.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
-                    <i class="bi bi-search-heart" style="color: #ffdada; font-size: 1.2rem;"></i>
-                    <b style="font-size: 0.9rem;">الرقم (${cleanPhone}) غير مسجل لدينا.</b>
-                </div>
-                <p style="font-size: 0.8rem; opacity: 0.9; line-height: 1.6; margin: 0 5px;">هذا الرقم غير مرتبط بأي طلبات سابقة. يرجى إتمام طلبكِ الأول لتفعيل خدمات الدعم الفني وتتبع الشحنات، أو التأكد من صحة الرقم المدخل. ✨</p>
-                <a href="https://wa.me/201067826270" target="_blank" style="color: #ffdada; text-decoration: none; font-weight: bold; border: 1.5px solid #ff4d4d; padding: 6px 18px; border-radius: 25px; display: inline-block; margin-top: 12px; font-size: 0.75rem; background: rgba(255,0,0,0.15); transition: 0.3s;">
-                    <i class="bi bi-whatsapp"></i> مساعدة فورية عبر واتساب
-                </a>
-            `;
-            errorDiv.style.display = 'block';
+        btn.disabled = true; btn.innerHTML = 'جاري التحقق... <i class="bi bi-hourglass-split"></i>';
+        const r = await fetch(supabaseUrl + '/functions/v1/chat-login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey }, body: JSON.stringify({ phone: cleanPhone, code }) });
+        const d = await r.json().catch(() => null);
+        if (d && d.ok && d.token) {
+            chatSessSave({ token: d.token, order_id: d.order_id, expires_at: d.expires_at });
+            localStorage.setItem('chat_code_' + d.order_id, code);
+            codeInput.value = ''; chatStopSync();
+            showSupport();
+        } else if (d && d.error === 'locked') {
+            showErr('<i class="bi bi-lock-fill"></i> الدخول موقوف مؤقتًا بعد محاولات غلط كتير. جرّبي بعد 15 دقيقة، أو ' + wa + ' وهنتحقق منك ونساعدك.');
+        } else if (d && d.error === 'invalid') {
+            showErr('<i class="bi bi-exclamation-triangle-fill"></i> الموبايل أو الكود غير صحيح. لو ضاع الكود ' + wa + ' وهنتحقق منك ونرجعهولك.');
         } else {
-            localStorage.removeItem('chat_auto_until');   // دخلت بنفسها: مفيش انتهاء
-            localStorage.setItem('user_chat_phone', primaryPhone);
-            showSupport(); 
+            showErr('حدث خطأ بسيط في الاتصال، حاولي مرة أخرى.');
         }
     } catch (err) {
-        console.error(err);
-        errorDiv.innerText = "حدث خطأ بسيط في الاتصال، حاولي مرة أخرى.";
-        errorDiv.style.display = 'block';
+        console.error(err); showErr('حدث خطأ بسيط في الاتصال، حاولي مرة أخرى.');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'بدء المحادثة';
+        btn.disabled = false; btn.innerHTML = 'دخول';
     }
 }
 
@@ -1580,7 +1552,8 @@ async function flushOutbox() {
         for (const item of getOutbox()) {
             let error = null;
             try {
-                ({ error } = await _supabase.rpc('chat_send', { p_phone: item.phone, p_text: item.text, p_client_id: item.cid }));
+                const sess = chatSess(); if (!sess) break;
+                ({ error } = await _supabase.rpc('chat_send_s', { p_token: sess.token, p_text: item.text, p_client_id: item.cid }));
             } catch (e) { error = { message: String(e) }; }
             if (!error) {
                 setOutbox(getOutbox().filter(i => i.cid !== item.cid));
@@ -1623,19 +1596,21 @@ function updateUnreadFromHistory(rows, drawerOpen) {
 }
 
 // تحميل المحادثة من السيرفر وعرضها (ومعاها الرسائل اللي لسه ما اتبعتتش)
-async function loadChatHistory(phone) {
+async function loadChatHistory() {
     if (_historyLoading) return;
     _historyLoading = true;
     try {
         const chatBody = document.getElementById('chat-body');
-        const { data, error } = await _supabase.rpc('chat_history', { p_phone: phone });
-        if (error) { console.error('Error loading history:', error); return; } // لو فشل التحميل منمسحش اللي معروض
+        const sess = chatSess(); if (!sess) { chatAutoExpiryCheck(); return; }
+        const { data, error } = await _supabase.rpc('chat_history_s', { p_token: sess.token });
+        if (error) { console.error('Error loading history:', error); if (/session/i.test(error.message || '')) { chatSessClear(); chatBody.querySelectorAll('.msg').forEach(m => m.remove()); if (isSupportOpen()) showSupport(); } return; } // لو فشل التحميل منمسحش اللي معروض
         const rows = data || [];
         updateUnreadFromHistory(rows, isSupportOpen());
         chatBody.querySelectorAll('.msg').forEach(m => m.remove());
         renderedCids.clear();
         if (rows.length) {
             rows.forEach(m => { if (m.client_id) renderedCids.add(m.client_id); appendMessage(m.text, m.sender, m.client_id); });
+            _lastAdminCount = rows.filter(x => x.sender === 'admin').length;
         } else {
             appendMessage('أهلاً بكِ مجدداً! ✨ كيف يمكننا مساعدتكِ؟', 'admin');
         }
@@ -1643,148 +1618,121 @@ async function loadChatHistory(phone) {
         setTimeout(() => { chatBody.scrollTop = chatBody.scrollHeight; }, 100);
     } finally { _historyLoading = false; }
 }
-function resyncChat() {
-    const p = localStorage.getItem('user_chat_phone');
-    if (p && chatSubscription) loadChatHistory(p.replace(/\D/g, ''));
-}
+function resyncChat() { if (chatSess() && _chatPoll) loadChatHistory(); }
 window.addEventListener('online', () => { flushOutbox(); resyncChat(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { flushOutbox(); resyncChat(); } });
 setTimeout(() => { if (getOutbox().length) flushOutbox(); }, 3000);
 
-async function startChatSync(phone) {
-    if (chatSubscription || _chatStarting) return;
+let _chatPoll = null, _lastAdminCount = null;
+let _rtc = null, _rtCh = null, _rtTimer = null, _rtOrder = null, _rtLastTyping = 0;
+async function rtFetchToken() {
+    const sess = chatSess(); if (!sess) return null;
+    const r = await fetch(supabaseUrl + '/functions/v1/chat-login', { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': supabaseKey, 'Authorization': 'Bearer ' + supabaseKey }, body: JSON.stringify({ action: 'rt', token: sess.token }) });
+    const d = await r.json().catch(() => null);
+    if (r.status === 401) { chatSessClear(); const cb = document.getElementById('chat-body'); if (cb) cb.querySelectorAll('.msg').forEach(m => m.remove()); if (isSupportOpen()) showSupport(); return null; }
+    return (d && d.ok) ? d : null;
+}
+function rtStop() {
+    clearTimeout(_rtTimer); _rtTimer = null;
+    try { if (_rtc && _rtCh) _rtc.removeChannel(_rtCh); } catch (e) {}
+    _rtCh = null; _rtOrder = null;
+}
+// قناة بث محمية خاصة بطلب واحد (توكن قصير العمر): رسائل فورية + "بيكتب" بدون أي قناة عامة
+async function rtConnect() {
+    try {
+        const d = await rtFetchToken(); if (!d) return;
+        if (!_rtc) _rtc = supabase.createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+        _rtc.realtime.setAuth(d.jwt);
+        if (!_rtCh || _rtOrder !== d.topic) {
+            rtStop();
+            _rtOrder = d.topic;
+            _rtCh = _rtc.channel(d.topic, { config: { private: true, broadcast: { self: false } } })
+                .on('broadcast', { event: 'msg' }, p => rtOnMsg(p.payload || {}))
+                .on('broadcast', { event: 'typing' }, p => rtOnTyping(p.payload || {}))
+                .on('broadcast', { event: 'delete_chat' }, () => { const cb = document.getElementById('chat-body'); if (cb) { cb.querySelectorAll('.msg').forEach(m => m.remove()); renderedCids.clear(); } appendMessage('تم تنظيف المحادثة... ✨', 'admin'); })
+                .subscribe(st => { if (st === 'SUBSCRIBED') loadChatHistory(); });
+        }
+        // تجديد التوكن قبل ما ينتهي (الجلسة نفسها لسه صالحة 72 ساعة)
+        clearTimeout(_rtTimer);
+        _rtTimer = setTimeout(rtConnect, Math.max(60000, (d.exp * 1000 - Date.now()) - 120000));
+    } catch (e) { console.error(e); _rtTimer = setTimeout(rtConnect, 30000); }
+}
+function rtOnMsg(m) {
+    if (!m || !m.text) return;
+    if (isDupMsg(m.cid, m.text, 'b')) return;
+    const indicator = document.getElementById('client-typing-indicator'); if (indicator) indicator.style.display = 'none';
+    if (m.sender === 'admin') {
+        if (!isSupportOpen()) { supportNewCount++; localStorage.setItem('supportNewCount', supportNewCount); updateGlobalSupportCount(); }
+        try { chatSound.currentTime = 0; chatSound.play().catch(() => {}); } catch (e) {}
+        appendMessage(m.text, 'admin', m.cid);
+        if (document.hidden || !isSupportOpen()) triggerBrowserNotification(m.text);
+    } else {
+        appendMessage(m.text, 'user', m.cid);
+    }
+}
+function rtOnTyping(p) {
+    if (p.sender !== 'admin') return;
+    const indicator = document.getElementById('client-typing-indicator'); if (!indicator) return;
+    if (p.typing === false) { indicator.style.display = 'none'; return; }
+    indicator.style.display = 'flex';
+    const cb = document.getElementById('chat-body'); cb.scrollTop = cb.scrollHeight;
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => { indicator.style.display = 'none'; }, 4000);
+}
+document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('chat-input');
+    if (inp) inp.addEventListener('input', () => {
+        if (!_rtCh || Date.now() - _rtLastTyping < 1500) return;
+        _rtLastTyping = Date.now();
+        try { _supabase.rpc('chat_typing_s', { p_token: chatSess(), p_typing: true }); } catch (e) {}
+    });
+});
+async function startChatSync() {
+    if (_chatPoll || _chatStarting || !chatSess()) return;
     _chatStarting = true;
-    primeChatAudio(); // تأكيد تفعيل الصوت عند بدء المزامنة
-    phone = phone.replace(/\D/g, '');
-
-    // 1. تحميل تاريخ الرسائل من السيرفر + حساب غير المقروء
-    try { await loadChatHistory(phone); } catch (e) { console.error(e); }
-
-    // 2. الاشتراك في القناة الموحدة
-    chatSubscription = _supabase.channel(`support_chat_${phone}`, { config: { broadcast: { self: false } } })
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `customer_phone=eq.${phone}` }, payload => {
-            if (payload.eventType === 'INSERT' && payload.new.sender === 'admin') {
-                if (isDupMsg(payload.new.client_id, payload.new.text, 'd')) return;
-
-                if (!document.getElementById('support-drawer').classList.contains('open')) { supportNewCount++; localStorage.setItem('supportNewCount', supportNewCount); updateGlobalSupportCount(); }
-                chatSound.currentTime = 0; chatSound.play().catch(()=>{}); appendMessage(payload.new.text, 'admin', payload.new.client_id);
-            }
-        })
-        .on('broadcast', { event: 'msg' }, payload => { 
-            if (payload.payload.sender === 'admin') { 
-                if (isDupMsg(payload.payload.cid, payload.payload.text, 'b')) return;
-
-                // تحديث آخر نص استلمناه لمنع تكرار الرسالة القادمة من قاعدة البيانات
-
-                // تحديث عداد الإشعارات إذا كان الشات مغلقاً (زي نظام المفضلة)
-                if (!document.getElementById('support-drawer').classList.contains('open')) {
-                    supportNewCount++;
-                    localStorage.setItem('supportNewCount', supportNewCount);
-                    updateGlobalSupportCount();
-                }
-
-                chatSound.currentTime = 0; chatSound.play().catch(()=>{}); 
-                appendMessage(payload.payload.text, 'admin', payload.payload.cid);
-                
-                // إظهار إشعار لو الصفحة مقفولة أو في الخلفية
-                triggerBrowserNotification(payload.payload.text);
-            } 
-        })
-        .on('broadcast', { event: 'typing' }, payload => {
-            if (payload.payload.sender === 'admin') {
-                const indicator = document.getElementById('client-typing-indicator');
-                if (indicator) {
-                    const isTyping = payload.payload.typing;
-                    if (isTyping) {
-                        indicator.style.display = 'flex';
-                        const cb = document.getElementById('chat-body');
-                        cb.scrollTop = cb.scrollHeight;
-                        clearTimeout(typingTimer);
-                        typingTimer = setTimeout(() => { indicator.style.display = 'none'; }, 4000);
-                    } else {
-                        indicator.style.display = 'none';
-                    }
-                }
-            }
-        })
-        .on('broadcast', { event: 'delete_chat' }, () => { 
-            document.getElementById('chat-body').innerHTML = '<div class="msg msg-admin" style="opacity:0.6; align-self:center; text-align:center; width: 100%;">تم تنظيف المحادثة... ✨</div>'; 
-        })
-        .subscribe();
+    primeChatAudio();
+    try { await loadChatHistory(); } catch (e) { console.error(e); }
+    await rtConnect();
+    // شبكة أمان بطيئة جداً فقط (الوصول الفوري بيتم من القناة المحمية)
+    _chatPoll = setInterval(() => { if (!chatSess()) { chatAutoExpiryCheck(); return; } if (document.visibilityState === 'visible') loadChatHistory(); }, 60000);
+    chatSubscription = _chatPoll;
     _chatStarting = false;
 }
 
 function endChat() {
     if(!confirm(document.documentElement.lang === 'en' ? translations.en.endChatConfirm : "هل أنتِ متأكدة من إنهاء الدردشة؟ سيتم مسح بيانات الدخول.")) return;
-    if (window.besanCustomerPushOff) besanCustomerPushOff();
-    localStorage.removeItem('user_chat_phone'); localStorage.removeItem('chat_auto_until'); localStorage.removeItem(OUTBOX_KEY); localStorage.removeItem(SEEN_KEY);
-    if (chatSubscription) { _supabase.removeAllChannels(); chatSubscription = null; }
-    document.getElementById('chat-body').innerHTML = ''; showSupport();
+    const sess = chatSess();
+    if (sess) { try { _supabase.rpc('chat_logout', { p_token: sess.token }); } catch (e) {} }
+    chatSessClear();
+    document.getElementById('chat-body').querySelectorAll('.msg').forEach(m => m.remove()); showSupport();
 }
 
 function sendQuickMsg(text) { const input = document.getElementById('chat-input'); input.value = text; sendMessage(); }
 
 async function sendMessage() {
     const input = document.getElementById('chat-input'); const text = input.value.trim();
-    const phone = localStorage.getItem('user_chat_phone') || (document.getElementById('customer-phone') ? document.getElementById('customer-phone').value.trim().replace(/\D/g, '') : '');
-    
     if (!text) return;
-    const lang = document.documentElement.lang || 'ar';
-    const t = translations[lang];
-    if (!phone) { alert(t.phoneRequiredAlert); showSupport(); return; }
-    if (!chatSubscription) await startChatSync(phone);
-
-    // كل رسالة ليها معرّف فريد، وبتتحفظ محلياً لحد ما تتأكد إنها وصلت للسيرفر (حتى لو مفيش نت)
+    if (!chatSess()) { showSupport(); return; }
+    if (!_chatPoll) await startChatSync();
     const cid = newMsgId();
-    if (chatSubscription) {
-        try {
-            Promise.resolve(chatSubscription.send({
-                type: 'broadcast', event: 'msg',
-                payload: { text, sender: 'user', msgId: cid, cid }
-            })).catch(() => {});
-        } catch (e) {}
-    }
     renderedCids.add(cid);
     appendMessage(text, 'user', cid, 'pending'); input.value = '';
-    const ob = getOutbox(); ob.push({ cid, phone, text, ts: Date.now(), attempts: 0 }); setOutbox(ob);
+    const ob = getOutbox(); ob.push({ cid, text, ts: Date.now(), attempts: 0 }); setOutbox(ob);
+    try { _supabase.rpc('chat_typing_s', { p_token: chatSess(), p_typing: false }); } catch (e) {}
     await flushOutbox();
-
-    // --- الرد التلقائي الذكي (Besan Bot): السيرفر هو اللي بيقرر ويحفظ الرد في المحادثة ---
     if (/^\d{1,9}$/.test(text) || /(طلب|اوردر|أوردر|شحن|توصيل|وصل|order|ship|deliver)/i.test(text)) {
-        setTimeout(() => handleBotReply(phone, text), 800);
+        setTimeout(() => handleBotReply(text), 800);
     }
 }
 
-async function handleBotReply(phone, text) {
+async function handleBotReply(text) {
     try {
-        const { data, error } = await _supabase.rpc('chat_bot_reply', { p_phone: String(phone).replace(/\D/g, ''), p_text: text });
+        const sess = chatSess(); if (!sess) return;
+        const { data, error } = await _supabase.rpc('chat_bot_reply_s', { p_token: sess.token, p_text: text });
         if (error || !data || !data.text) return;
         if (data.cid) { if (renderedCids.has(data.cid)) return; renderedCids.add(data.cid); }
         appendMessage(data.text, 'admin', data.cid);
     } catch (e) { console.error(e); }
-}
-
-// وظيفة مساعدة لإرسال رد من الأدمن برمجياً
-async function sendAdminAutoReply(phone, text) {
-    const msgId = Date.now();
-
-    // تحديث معرّفات منع التكرار محلياً قبل الإرسال
-    // هذا يمنع المستمع (Listener) من إضافة الرسالة مرة أخرى عند وصولها من قاعدة البيانات
-    lastProcessedBroadcastId = msgId;
-    lastProcessedMsgText = text;
-
-    // 1. إرسال بث مباشر ليظهر عند العميل فوراً
-    if (chatSubscription) {
-        chatSubscription.send({ 
-            type: 'broadcast', 
-            event: 'msg', 
-            payload: { text, sender: 'admin', msgId } 
-        });
-    }
-    // 2. عرضه في الشات الحالي
-    appendMessage(text, 'admin');
-    // 3. حفظه في قاعدة البيانات ليظهر للأدمن
-    await _supabase.from('messages').insert([{ customer_phone: phone, sender: 'admin', text }]);
 }
 
 // وظيفة إرسال إشعار للمتصفح مثل الواتساب
@@ -1856,7 +1804,25 @@ function appendMessage(text, side, cid, state) {
     const msgDiv = document.createElement('div');
     msgDiv.className = `msg msg-${side}` + (state ? ` msg-${state}` : '');
     if (cid) msgDiv.dataset.cid = cid;
-    msgDiv.innerText = text;
+    if (side === 'admin' && typeof text === 'string' && text.indexOf('[[CODE]]') !== -1) {
+        const parts = text.split('[[CODE]]');
+        msgDiv.innerText = parts[0].replace(/\s+$/, '');
+        const sess = chatSess(); const code = sess ? chatCodeFor(sess.order_id) : '';
+        const box = document.createElement('div');
+        box.style.cssText = 'margin-top:10px;border:2px dashed #f6006f;border-radius:14px;padding:10px;text-align:center;background:#fff;color:#333';
+        if (code) {
+            box.innerHTML = '<div style="font-size:.8rem">كود دخولك السري (٦ أرقام)</div><div class="code-digits" style="font-size:2rem;font-weight:800;letter-spacing:6px;direction:ltr"></div>' +
+              '<button type="button" class="confirm-order-btn code-copy" style="padding:6px 22px;margin-top:6px;font-size:.85rem;width:auto">نسخ الكود</button>' +
+              '<div style="margin-top:8px;padding:8px;border-radius:10px;background:#fff6d6;color:#7a5b00;font-size:.75rem;line-height:1.6">احفظي الكود ده. بعد 72 ساعة هتحتاجيه مع رقم موبايلك علشان تفتحي محادثة الطلب ده تاني.</div>';
+            box.querySelector('.code-digits').textContent = code;
+            box.querySelector('.code-copy').addEventListener('click', ev => { const b = ev.currentTarget; const done = () => { b.textContent = 'تم النسخ ✓'; setTimeout(() => { b.textContent = 'نسخ الكود'; }, 2000); }; try { navigator.clipboard.writeText(code).then(done, done); } catch (e) { done(); } });
+        } else {
+            box.innerHTML = '<div style="font-size:.8rem">🔑 كود الدخول السري ظهر وقت تسجيل الطلب. لو ضاع كلمي الفريق على واتساب وهنتحقق منك.</div>';
+        }
+        msgDiv.appendChild(box);
+    } else {
+        msgDiv.innerText = text;
+    }
 
     // ضمان إضافة الرسالة قبل فقاعة "جاري الكتابة" لتبقى الفقاعة دائماً في الأسفل
     if (indicator) {

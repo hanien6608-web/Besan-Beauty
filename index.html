@@ -368,13 +368,17 @@
             </div>
         </div>
         <div id="chat-auth-section" style="padding: 20px; text-align: center; display: none;">
-            <p style="margin-bottom: 15px; font-size: 0.9rem;">من فضلكِ أدخلي رقم الموبايل لبدء الدردشة مع الدعم الفني ✨</p>
+            <p style="margin-bottom: 15px; font-size: 0.9rem;">ادخلي رقم الموبايل والكود السري (٦ أرقام) اللي ظهر لكِ في رسالة الطلب ✨</p>
             <div class="input-group">
                 <i class="bi bi-phone"></i>
                 <input type="tel" id="chat-phone-input" placeholder="رقم الموبايل (11 رقم)">
             </div>
+            <div class="input-group" style="margin-top: 10px;">
+                <i class="bi bi-key"></i>
+                <input type="tel" id="chat-code-input" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="الكود السري (6 أرقام)">
+            </div>
             <div id="chat-auth-error" class="validation-error" style="display: none; text-align: center; margin-top: 10px;"></div>
-            <button class="confirm-order-btn" style="width: 100%; margin-top: 15px;" onclick="identifyChatUser()">بدء المحادثة</button>
+            <button class="confirm-order-btn" style="width: 100%; margin-top: 15px;" onclick="identifyChatUser()">دخول</button>
         </div>
         <div class="chat-body" id="chat-body" style="display: none;">
             <div class="msg msg-bot">أهلاً بكِ! ✨ كيف يمكننا مساعدتكِ اليوم؟</div>

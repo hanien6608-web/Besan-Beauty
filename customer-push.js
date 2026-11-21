@@ -42,15 +42,15 @@
     b.disabled = !!disabled;
     el.querySelector('#cpush-note').textContent = note || '';
   }
-  async function register(sub, phone) {
+  function sessToken() { try { const o = JSON.parse(localStorage.getItem('chat_session') || 'null'); return (o && Date.parse(o.expires_at) > Date.now()) ? o.token : ''; } catch (e) { return ''; } }
+  async function register(sub) {
     const c = client();
     if (!c) throw new Error('no client');
-    const { error } = await c.functions.invoke('push-notifications', { body: { audience: 'customer', phone, subscription: sub.toJSON() } });
+    const { error } = await c.functions.invoke('push-notifications', { body: { audience: 'customer', token: sessToken(), subscription: sub.toJSON() } });
     if (error) throw error;
   }
   async function enable(el) {
-    const phone = localStorage.getItem('user_chat_phone');
-    if (!phone) return;
+    if (!sessToken()) return;
     try {
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') { show(el, '', tr('denied')); return; }
@@ -58,20 +58,20 @@
       const k = keyBytes();
       if (!k) throw new Error('no key');
       const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: k });
-      await register(sub, phone);
+      await register(sub);
       show(el, '', tr('done'));
     } catch (e) { show(el, tr('on'), tr('err')); }
   }
-  window.besanCustomerPushInit = async function (phone) {
+  window.besanCustomerPushInit = async function (hasSession) {
     try {
       const el = bar();
-      if (!el || !phone || !supported) { if (el) el.style.display = 'none'; return; }
+      if (!el || !hasSession || !supported) { if (el) el.style.display = 'none'; return; }
       if (isIOS && !standalone) { show(el, '', tr('ios')); return; }
       if (Notification.permission === 'denied') { show(el, '', tr('denied')); return; }
       if (Notification.permission === 'granted') {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
-        if (sub) { await register(sub, phone).catch(() => {}); show(el, '', tr('done')); return; }
+        if (sub) { await register(sub).catch(() => {}); show(el, '', tr('done')); return; }
       }
       show(el, tr('on'), '');
     } catch (_) { /* never break the chat */ }
