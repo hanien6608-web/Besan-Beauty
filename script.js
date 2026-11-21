@@ -1814,6 +1814,7 @@ function appendMessage(text, side, cid, state) {
         box.style.cssText = 'margin-top:10px;border:2px dashed #f6006f;border-radius:14px;padding:10px;text-align:center;background:#fff;color:#333';
         if (code) {
             box.innerHTML = '<div style="font-size:.8rem">كود دخولك السري (٦ أرقام)</div><div class="code-digits" style="font-size:2rem;font-weight:800;letter-spacing:6px;direction:ltr"></div>' +
+              '<div style="margin-top:4px;font-size:.78rem;color:#8a3a62;line-height:1.5">📸 صوّري الشاشة (سكرين شوت) علشان تحتفظي بالكود</div>' +
               '<button type="button" class="confirm-order-btn code-copy" style="padding:6px 22px;margin-top:6px;font-size:.85rem;width:auto">نسخ الكود</button>' +
               '<div style="margin-top:8px;padding:8px;border-radius:10px;background:#fff6d6;color:#7a5b00;font-size:.75rem;line-height:1.6">احفظي الكود ده. بعد 72 ساعة هتحتاجيه مع رقم موبايلك علشان تفتحي محادثة الطلب ده تاني.</div>';
             box.querySelector('.code-digits').textContent = code;
