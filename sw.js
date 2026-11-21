@@ -1,5 +1,5 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v12';
+const CACHE_NAME = 'besan-client-shell-v13';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',
@@ -71,7 +71,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(data.title || 'Besan Beauty', {
     body: data.body || 'لديكِ تحديث جديد ✨',
     icon: './logo-192.png',
-    badge: './logo-192.png',
+    badge: './badge-96.png',
     tag: data.tag || ('besan-client-' + Date.now()),
     renotify: true,
     data: { url: data.url || APP_START, type: data.type || '' }
