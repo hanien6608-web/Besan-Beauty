@@ -17,8 +17,8 @@ window.APP_CONFIG = {
     // مفتاح Web Push العام (يُضاف بعد توليد زوج مفاتيح VAPID)
     VAPID_PUBLIC_KEY: 'BIlBRlPWPVa9XamZAbmKeqpQziQ9IIaBBMJxcPdnX2wLvtgnoHcQLHPRyJMEfQnKTriwZVe0ymvp3P_7Eu3kBvY',
 
-    // أصوات التنبيه (ملفات جاهزة جوا مجلد sounds، مش محتاجة رفع)
-    SOUND_ORDER: 'sounds/order.mp3',
-    SOUND_CHAT: 'sounds/chat.mp3'
+    // أصوات التنبيه (ملفات order.mp3 و chat.mp3 في نفس مجلد الموقع)
+    SOUND_ORDER: 'order.mp3',
+    SOUND_CHAT: 'chat.mp3'
 };
 window.APP_CONFIG.STORAGE_PUBLIC_BASE = window.APP_CONFIG.SUPABASE_URL + '/storage/v1/object/public/' + window.APP_CONFIG.STORAGE_BUCKET + '/';

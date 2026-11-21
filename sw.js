@@ -1,5 +1,5 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v11';
+const CACHE_NAME = 'besan-client-shell-v12';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',
@@ -13,8 +13,8 @@ const SHELL_FILES = [
   './logo-192.png',
   './logo-512.png',
   './logo.svg',
-  './sounds/order.mp3',
-  './sounds/chat.mp3'
+  './order.mp3',
+  './chat.mp3'
 ];
 
 self.addEventListener('install', (event) => {
