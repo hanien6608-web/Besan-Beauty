@@ -883,6 +883,20 @@ async function translateProvinceName(provinceName) {
     return translated;
 }
 
+// Server rejected the order because prices or shipping changed: refresh cart prices from the live catalog and ask her to reconfirm
+function isPriceMismatch(e) { return !!(e && /price_mismatch/.test((e.message || '') + ' ' + (e.details || '') + ' ' + (e.hint || ''))); }
+async function handlePriceMismatch() {
+    try {
+        const { data } = await _supabase.from('products').select('id,price,in_stock');
+        if (Array.isArray(data)) {
+            cart.forEach(it => { const f = data.find(b => String(b.id) === String(it.id)); if (f) { it.price = f.price; } });
+            (window.fullData || []).forEach(b => { const f = data.find(x => String(x.id) === String(b.id)); if (f) { b.price = f.price; b.in_stock = f.in_stock; } });
+            saveCartToLocalStorage(); updateCartUI();
+        }
+    } catch (e) { console.error(e); }
+    alert('الأسعار أو الشحن اتحدّثوا. راجعي السلة والإجمالي الجديد وأكدي الطلب تاني.');
+}
+
 function addItemToCart(id, customQty = 1) {
     const book = window.fullData.find(b => String(b.id) === String(id));
     const inCart = cart.find(i => String(i.id) === String(id));
@@ -1121,6 +1135,7 @@ async function confirmOrder() {
     try {
         confirmBtn.disabled = true; confirmBtn.innerHTML = `${t.processingOrder} <i class="bi bi-hourglass-split"></i>`;
         const { data: placed, error } = await _supabase.rpc('place_order', { p: orderData });
+        if (isPriceMismatch(error)) { await handlePriceMismatch(); return; }
         if (error || !placed) { console.error('order insert failed', error); throw new Error('order-failed'); }
         chatSessionStart(placed);
         alert(t.orderSuccess);
@@ -1323,6 +1338,7 @@ async function payConfirm(withReceipt) {
         if (withReceipt) path = await payUploadReceipt(PAY.file);
         const row = Object.assign({}, PAY.orderData, { status: 'awaiting_payment', deposit_amount: PAY.deposit, receipt_path: path });
         const { data: placed, error } = await _supabase.rpc('place_order', { p: row });
+        if (isPriceMismatch(error)) { lock(false); closePayModal(); await handlePriceMismatch(); return; }
         if (error || !placed) throw error || new Error('order');
         const od = PAY.orderData;
         if (!withReceipt) localStorage.setItem('pendingReceiptPhone', od.customer_phone); else localStorage.removeItem('pendingReceiptPhone');
