@@ -207,7 +207,7 @@
     'أهلاً بكِ! ✨ كيف يمكننا مساعدتكِ اليوم؟': 'Welcome! ✨ How can we help you today?',
     'الدعم يكتب الآن...': 'Support is typing...', 'العميل يكتب الآن...': 'Customer is typing...',
     'الأوردر بتاعي لسه موصلش؟ 🚚': "Hasn't my order arrived yet? 🚚",
-    'بدء المحادثة': 'Start chat',
+    'بدء المحادثة': 'Start chat', 'إنهاء الدردشة': 'End chat',
     'ج.م': 'EGP'
   };
   const ORIGINALS = new WeakMap();
