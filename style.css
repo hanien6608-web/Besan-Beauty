@@ -16,10 +16,9 @@
     box-sizing: border-box; 
     margin: 0; 
     padding: 0; 
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     /* منع ظهور مؤشر الكتابة واختيار النصوص في كل عناصر الصفحة */
-    user-select: none !important;
-    caret-color: transparent !important; /* إخفاء العصا الوامضة من الصفحة كلها */
+    user-select: text;
+    caret-color: auto; /* إخفاء العصا الوامضة من الصفحة كلها */
 }
 
 /* السماح بالمؤشر واختيار النص فقط داخل مربعات الإدخال */
@@ -209,11 +208,13 @@ header {
 
 .books-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 15px;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 600px) { .books-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .books-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1200px) {
     .books-grid {
         grid-template-columns: repeat(5, 1fr);
         gap: 20px;
@@ -226,7 +227,6 @@ header {
     padding: 12px;
     text-align: center;
     border: 1px solid rgba(246, 0, 111, 0.2);
-    backdrop-filter: blur(15px);
     /* إعدادات ظهور الكروت صف بصف */
     opacity: 0;
     transform: translateY(30px);
@@ -1636,3 +1636,18 @@ footer.besan-footer .besan-dev-credit a, footer.besan-footer .besan-dev-credit a
 .support-drawer.logged-out{height:auto!important;max-height:85vh;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
 .support-drawer.logged-out>.quick-actions,.support-drawer.logged-out>.input-group{display:none!important}
 .support-drawer.logged-out #chat-auth-section{padding:12px 6px 4px!important}
+
+/* Motion and keyboard preferences, without animating every layout property. */
+[role="button"], button, a { -webkit-tap-highlight-color: transparent; }
+[tabindex]:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #841343; outline-offset: 3px; }
+.book-card { min-width: 0; }
+#splash.hide { transition-duration: .25s; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } .book-card { opacity:1; transform:none; } #splash { display:none; } }
+
+.image-box.show-secondary .hover-img { opacity:1; transform:scale(1); }
+.image-box.show-secondary .main-img { opacity:0; }
+.book-card .image-box { touch-action: pan-y; }
+
+.product-title-btn { padding:0; border:0; background:none; color:inherit; font:inherit; cursor:pointer; }
+.categories-list button.category-item { border:0; background:transparent; font-family:inherit; line-height:inherit; }
+.categories-list button.category-item.active, .categories-list button.category-item:hover { background:#d60060; color:#fff; }

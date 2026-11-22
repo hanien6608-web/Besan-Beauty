@@ -2,7 +2,7 @@
 
 // إعدادات الربط مع Supabase
 const supabaseUrl = APP_CONFIG.SUPABASE_URL;
-const supabaseKey = APP_CONFIG.SUPABASE_ANON_KEY; 
+const supabaseKey = APP_CONFIG.SUPABASE_ANON_KEY;
 // الموقع للعميلات دايماً زائر عادي: مفيش جلسة محفوظة (حتى لو لوحة الأدمن مفتوحة على نفس المتصفح)
 const _supabase = supabase.createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 window.BESAN_SUPABASE = _supabase;
@@ -36,7 +36,14 @@ function syncScrollLock() {
 function addLockScroll() { syncScrollLock(); setTimeout(syncScrollLock, 60); }
 function removeLockScroll() { syncScrollLock(); setTimeout(syncScrollLock, 60); setTimeout(syncScrollLock, 600); }
 // شبكة أمان: لو أي حاجة حصلت غلط، القفل بيتصلّح لوحده
-setInterval(syncScrollLock, 1000);
+document.addEventListener('DOMContentLoaded', () => {
+    const observer = new MutationObserver(syncScrollLock);
+    ['cart-drawer', 'support-drawer', 'book-details-page', 'pay-overlay'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) observer.observe(element, { attributes: true, attributeFilter: ['class', 'style'] });
+    });
+    syncScrollLock();
+});
 window.addEventListener('pageshow', syncScrollLock);
 document.addEventListener('visibilitychange', syncScrollLock);
 
@@ -115,12 +122,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }); // ملء قائمة المحافظات عند تحميل الصفحة
     updateGlobalCartCount(); // تحديث عداد السلة عند تحميل الصفحة
     updateGlobalWishCount(); // تحديث عداد المفضلة
-    
+
     // تفعيل المزامنة الخلفية للشات إذا كان المستخدم معروفاً
     chatAutoExpiryCheck();
     updateGlobalSupportCount();
     if (chatSess()) startChatSync();
-    
+
     // فحص إذا كان المستخدم قادماً من إشعار (والموقع كان مغلقاً)
     if (urlParams.get('openSupport') === 'true') {
         setTimeout(() => showSupport(true), 1000); // تأكد من تمرير true لـ shouldPush
@@ -152,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             scrollBtn.classList.remove('visible');
         }
-        
+
         const rect = triggerArea.getBoundingClientRect();
         if (window.scrollY > 150 || rect.top <= 0) {
             stickyHeader.classList.add('visible');
@@ -182,7 +189,7 @@ function scrollToTop() {
 // هذه الوظيفة تراقب ضغط زر الرجوع في المتصفح أو الهاتف
 window.addEventListener('popstate', function(event) {
     const state = event.state || { view: 'home' };
-    
+
     // إغلاق النوافذ فقط إذا لم تكن هي الوجهة المطلوبة في الحالة الجديدة
     // هذا يضمن بقاء صفحة التفاصيل مفتوحة عند إغلاق السلة أو الدعم
     if (state.view !== 'cart') closeCart(false);
@@ -211,7 +218,7 @@ window.addEventListener('load', () => {
 function pushNavigationState(stateName, extraData = {}) {
     const state = { view: stateName, ...extraData };
     const currentState = window.history.state;
-    
+
     // منع تكرار نفس الحالة في التاريخ
     if (!currentState || currentState.view !== stateName || (stateName === 'details' && currentState.id !== extraData.id)) {
         window.history.pushState(state, '', stateName === 'details' ? `?id=${encodeURIComponent(extraData.id)}` : window.location.pathname);
@@ -280,7 +287,7 @@ function filterByCategory(category) {
         });
     }
     // ترتيب عشوائي في كل مرة
-    const shuffled = filtered.sort(() => Math.random() - 0.5);
+    const shuffled = [...filtered];
     renderBooksList(shuffled);
 }
 
@@ -288,7 +295,7 @@ function filterByCategory(category) {
 async function getMyLibraryData() {
     window.fullData = [];
     const container = document.getElementById('books-list');
-    const { data, error } = await _supabase.from('products').select('*');
+    const { data, error } = await _supabase.from('products').select('*').order('id');
 
     if (error) {
         console.error("Error connecting:", error.message);
@@ -297,8 +304,8 @@ async function getMyLibraryData() {
     }
 
     // ترتيب الكتب عشوائياً في كل مرة يتم فيها تحميل الموقع
-    const shuffledData = data.sort(() => Math.random() - 0.5);
-    
+    const shuffledData = [...data].sort((a, b) => Number(a.id) - Number(b.id));
+
     window.fullData = shuffledData;
     renderBooksList(shuffledData);
 
@@ -313,7 +320,7 @@ async function getMyLibraryData() {
             broadcast: { self: true } // السماح بالبث الذاتي لتحديث الكتب المضافة حديثاً
         }
     }).on('postgres_changes', {
-        event: '*', 
+        event: '*',
         schema: 'public',
         table: 'products'
     }, payload => {
@@ -330,7 +337,7 @@ async function getMyLibraryData() {
         } else if (payload.eventType === 'DELETE') {
             window.fullData = window.fullData.filter(b => String(b.id) !== String(payload.old.id));
         }
-        
+
         // إعادة عرض الكتب بناءً على القسم المختار حالياً
         if (currentView === 'home') {
             const activeCat = (document.querySelector('.category-item.active')?.innerText || 'الكل').replace(/^All$/, 'الكل');
@@ -346,7 +353,7 @@ function renderBooksList(data) {
     const container = document.getElementById('books-list');
     const lang = document.documentElement.lang || 'ar';
     const t = translations[lang];
-    
+
     if (data.length === 0) {
         if (currentView === 'wishlist') {
             container.innerHTML = `
@@ -377,7 +384,7 @@ function renderBooksList(data) {
     }
 
     container.innerHTML = data.map((book, index) => renderBookCard(book, index)).join('');
-    
+
     updateCartUI(); // لضمان ظهور علامات الصح
 }
 
@@ -412,7 +419,7 @@ function renderBookCard(book, index) {
         displayTitle = cache?.title || (book.title_en || (t.bookData[book.id]?.title || book.title));
         displayAuthor = cache?.author || (book.brand_en || (t.bookData[book.id]?.author || book.brand));
         displayDesc = cache?.desc || (book.description_en || (t.bookData[book.id]?.desc || displayDesc));
-        
+
         // إذا لم تكن الترجمة موجودة في أي مكان، نطلق عملية الترجمة الآلية في الخلفية
         if (!cache && !book.title_en && !t.bookData[book.id]) {
             triggerAutoTranslate(book);
@@ -420,32 +427,32 @@ function renderBookCard(book, index) {
     }
 
     return `
-       <div class="book-card" style="animation: fadeInUp ${0.3 + (index * 0.1)}s ease-out;" onclick="showBookDetails('${book.id}')" itemscope itemtype="http://schema.org/Book">
+       <div class="book-card" style="animation: fadeInUp ${0.3 + (Math.min(index, 3) * 0.05)}s ease-out;" onclick="showBookDetails('${book.id}')" itemscope itemtype="https://schema.org/Product">
             <div class="image-box">
                 ${has2nd ? `<div class="hover-trigger trigger-right"></div><div class="hover-trigger trigger-left"></div>` : ''}
-                <img src="${pendingEsc(img1)}" class="main-img" loading="lazy" alt="${pendingEsc(displayTitle)} - ${pendingEsc(displayAuthor)}" itemprop="image"> <!-- تحميل ذكي حسب الصف -->
-                ${has2nd ? `<img src="${pendingEsc(img2)}" class="hover-img" alt="${LT('صورة إضافية لـ', 'Additional photo of')} ${pendingEsc(displayTitle)}">` : ''}
+                <img src="${pendingEsc(img1)}" class="main-img" loading="lazy" decoding="async" alt="${pendingEsc(displayTitle)} - ${pendingEsc(displayAuthor)}" itemprop="image"> <!-- تحميل ذكي حسب الصف -->
+                ${has2nd ? `<img src="${pendingEsc(img2)}" class="hover-img" loading="lazy" decoding="async" alt="${LT('صورة إضافية لـ', 'Additional photo of')} ${pendingEsc(displayTitle)}">` : ''}
                 <div class="image-indicators"><div class="dot active"></div>${has2nd ? `<div class="dot"></div>` : ''}</div>
             </div>
             <div class="book-actions">
-                <span id="wish-btn-${book.id}" class="action-icon ${isInWishlist ? 'active' : ''}" title="${LT('المفضلة', 'Wishlist')}" 
+                <span id="wish-btn-${book.id}" role="button" tabindex="0" aria-label="${LT('تغيير المفضلة', 'Toggle wishlist')}" class="action-icon ${isInWishlist ? 'active' : ''}" title="${LT('المفضلة', 'Wishlist')}"
                       onclick="event.stopPropagation(); toggleWishlist(${book.id})">
                     <i id="wish-icon-${book.id}" class="bi bi-bookmark-heart"></i>
                 </span>
             </div>
-            <h3 itemprop="name">${pendingEsc(displayTitle)}</h3>
+            <h3 itemprop="name"><button type="button" class="product-title-btn" onclick="event.stopPropagation(); showBookDetails('${book.id}')">${pendingEsc(displayTitle)}</button></h3>
             <div class="star-rating" style="justify-content: center; font-size: 0.8rem;">
                 <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-half"></i>
             </div>
-            <p class="author-name" itemprop="author">${t.by}: ${pendingEsc(displayAuthor)}</p>
+            <p class="author-name">${t.by}: <span itemprop="brand" itemscope itemtype="https://schema.org/Brand"><span itemprop="name">${pendingEsc(displayAuthor)}</span></span></p>
             <p class="book-desc" itemprop="description">${pendingEsc(displayDesc)}</p>
-            ${isSoldOut ? 
-                `<div class="out-of-stock-badge">${lang === 'en' ? 'Sold out' : 'نفذت الكمية'}</div>` : 
-                `<button class="cart-btn" id="add-btn-${book.id}" data-id="${book.id}" onclick="event.stopPropagation(); addItemToCart('${book.id}')">
+            ${isSoldOut ?
+                `<div class="out-of-stock-badge">${lang === 'en' ? 'Sold out' : 'نفذت الكمية'}</div>` :
+                `<button class="cart-btn" aria-label="${LT('إضافة للسلة', 'Add to cart')}" id="add-btn-${book.id}" data-id="${book.id}" onclick="event.stopPropagation(); addItemToCart('${book.id}')">
                     <i class="bi bi-cart-plus"></i>
                 </button>`
             }
-            <div class="price-cart-container" itemprop="offers" itemscope itemtype="http://schema.org/Offer"><div class="price"><span itemprop="price">${pendingEsc(book.price)}</span> <span itemprop="priceCurrency" content="EGP">${t.currency}</span></div></div>
+            <div class="price-cart-container" itemprop="offers" itemscope itemtype="https://schema.org/Offer"><div class="price"><span itemprop="price">${pendingEsc(book.price)}</span> <span itemprop="priceCurrency" content="EGP">${t.currency}</span></div></div>
         </div>`;
 }
 
@@ -456,10 +463,10 @@ function getRandomBooks(count) {
 
 function getRelatedBooks(currentBook) {
     if (!window.fullData || !currentBook || !currentBook.category) return [];
-    
+
     return window.fullData.filter(b => {
         // منتجات قد تعجبك تكون من نفس تصنيف الكتاب المفتوح (مطابقة تامة لسلسلة التصنيف)
-        return b.category === currentBook.category && String(b.id) !== String(currentBook.id);
+        return String(b.category || '').split(',').map(c => c.trim()).some(c => String(currentBook.category).split(',').map(x => x.trim()).includes(c)) && String(b.id) !== String(currentBook.id);
     }).slice(0, 4);
 }
 
@@ -473,9 +480,9 @@ function renderSmallCard(book) {
     return `
         <div class="book-card" style="padding: 8px; font-size: 0.8rem;" onclick="event.stopPropagation(); showBookDetails('${book.id}')">
             <div class="image-box" style="height: 120px;">
-                <img src="${pendingEsc(img)}" style="object-fit: cover;">
+                <img src="${pendingEsc(img)}" loading="lazy" decoding="async" alt="${pendingEsc(book.title)}" style="object-fit: cover;">
             </div>
-            <h3 style="font-size: 0.8rem; height: 35px; overflow: hidden;">${pendingEsc(book.title)}</h3>
+            <h3 style="font-size: 0.8rem; height: 35px; overflow: hidden;"><button type="button" class="product-title-btn" onclick="event.stopPropagation(); showBookDetails('${book.id}')">${pendingEsc(book.title)}</button></h3>
             <div class="price" style="font-size: 0.9rem;">${pendingEsc(book.price)} ${t.currency}</div>
             <button class="cart-btn ${isInCart ? 'success' : ''}" data-id="${book.id}" style="width: 25px; height: 25px; font-size: 0.8rem; bottom: 8px; left: 8px;" onclick="event.stopPropagation(); addItemToCart('${book.id}')">
                 <i class="bi ${isInCart ? 'bi-check-lg' : 'bi-cart-plus'}"></i>
@@ -503,9 +510,9 @@ async function showBookDetails(id, shouldPush = true) {
 
     const lang = document.documentElement.lang || 'ar';
     const t = translations[lang];
-    
-    window.currentOpenedBookId = book.id; 
-    currentDetailsQty = 1; 
+
+    window.currentOpenedBookId = book.id;
+    currentDetailsQty = 1;
     const content = document.getElementById('details-content');
 
     // تطبيق الترجمة الذكية داخل صفحة التفاصيل
@@ -541,8 +548,8 @@ async function showBookDetails(id, shouldPush = true) {
                     ${has2nd ? `<img src="${pendingEsc(img2)}" alt="${LT('عرض إضافي لـ', 'Additional view of')} ${pendingEsc(book.title)}">` : ''}
                 </div>
                 ${has2nd ? `
-                <button class="slider-arrow arrow-prev" onclick="event.stopPropagation(); slideDetails(0)"><i class="bi bi-chevron-right"></i></button>
-                <button class="slider-arrow arrow-next" onclick="event.stopPropagation(); slideDetails(1)"><i class="bi bi-chevron-left"></i></button>
+                <button class="slider-arrow arrow-prev" aria-label="الصورة الأولى" onclick="event.stopPropagation(); slideDetails(0)"><i class="bi bi-chevron-right"></i></button>
+                <button class="slider-arrow arrow-next" aria-label="الصورة الثانية" onclick="event.stopPropagation(); slideDetails(1)"><i class="bi bi-chevron-left"></i></button>
                 <div class="slider-dots">
                     <div class="slider-dot active" onclick="slideDetails(0)"></div>
                     <div class="slider-dot" onclick="slideDetails(1)"></div>
@@ -559,18 +566,18 @@ async function showBookDetails(id, shouldPush = true) {
             <p class="full-desc">${pendingEsc(displayDesc)}</p>
             <div style="font-size: 2rem; color: var(--paper-light); margin-bottom: 25px; font-weight: bold;">${pendingEsc(book.price)} ${t.currency}</div>
             <div class="details-actions">
-                ${isSoldOut ? 
+                ${isSoldOut ?
                     `<div class="out-of-stock-badge" style="font-size: 1.3rem; padding: 15px 40px; flex: 1; text-align: center;">${lang === 'en' ? 'Sold out' : 'نفذت الكمية من Besan Beauty 🌸'}</div>` :
                     `<div class="details-qty-container">
-                        <button class="qty-btn-det" onclick="updateDetQty(-1)"><i class="bi bi-dash"></i></button>
+                        <button class="qty-btn-det" aria-label="تقليل الكمية" onclick="updateDetQty(-1)"><i class="bi bi-dash"></i></button>
                         <span id="det-qty-val" style="font-size: 1.6rem; font-weight: bold; color: var(--paper-light); min-width: 30px; text-align: center;">1</span>
-                        <button class="qty-btn-det" onclick="updateDetQty(1)"><i class="bi bi-plus"></i></button>
+                        <button class="qty-btn-det" aria-label="زيادة الكمية" onclick="updateDetQty(1)"><i class="bi bi-plus"></i></button>
                     </div>
                     <button id="details-add-btn" class="shop-now-btn ${isInCart ? 'success' : ''}" style="flex: 1; min-width: 200px;" onclick="addItemToCart('${book.id}', currentDetailsQty)">
                         ${isInCart ? `<i class="bi bi-check-lg"></i> ${lang === 'en' ? t.added : 'تم الإضافة'}` : `<i class="bi bi-cart-plus"></i> ${lang === 'en' ? t.addToCart : 'إضافة للسلة'}`}
                     </button>`
                 }
-                <button id="details-wish-btn" class="wish-btn-large ${isInWishlist ? 'active' : ''}" onclick="toggleWishlist(${book.id}); updateDetailsWishBtn(${book.id})">
+                <button id="details-wish-btn" aria-label="${LT('تغيير المفضلة', 'Toggle wishlist')}" class="wish-btn-large ${isInWishlist ? 'active' : ''}" onclick="toggleWishlist(${book.id}); updateDetailsWishBtn(${book.id})">
                     <i id="details-wish-icon" class="bi bi-bookmark-heart"></i>
                 </button>
             </div>
@@ -592,10 +599,10 @@ async function showBookDetails(id, shouldPush = true) {
         grids.forEach(g => g.style.gridTemplateColumns = 'repeat(4, 1fr)');
     }
 
-    detailsPage.style.display = 'flex'; 
+    detailsPage.style.display = 'flex';
     setTimeout(() => detailsPage.classList.add('active'), 10);
     if (!isAlreadyOpen) addLockScroll();
-    
+
     updateLayersScroll(); // التأكد من حالة السكرول عند فتح الصفحة
 
     if (shouldPush) pushNavigationState('details', { id: book.id });
@@ -607,7 +614,7 @@ function slideDetails(index) {
     const slider = document.getElementById('details-slider');
     const dots = document.querySelectorAll('.slider-dot');
     if (slider) {
-        slider.style.transform = `translateX(${index * 100}%)`; 
+        slider.style.transform = `translateX(${index * 100}%)`;
         if (document.documentElement.dir === 'ltr') slider.style.transform = `translateX(-${index * 100}%)`;
         dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
     }
@@ -680,7 +687,7 @@ const translations = {
         wishlistEmptyDesc: "لم تقم بإضافة أي منتجات لمفضلتك بعد.",
         discoverNow: "اكتشف الآن",
         mostSelling: "الأكثر مبيعاً في Besan Beauty", relatedBooks: "منتجات قد تعجبك",
-        booksCount: "عدد المنتجات", book: "منتج", totalOrder: "إجمالي الطلب", 
+        booksCount: "عدد المنتجات", book: "منتج", totalOrder: "إجمالي الطلب",
         shippingCostLabel: "تكلفة الشحن", grandTotalLabel: "الإجمالي الكلي",
         shippingNote: "ملحوظة: سعر الشحن", shippingDays: "الشحن يستغرق من 3 إلى 5 أيام عمل.",
         confirmOrderHeader: "تأكيد طلبك", confirmOrderBtn: "تأكيد الطلب",
@@ -695,7 +702,7 @@ const translations = {
         phoneRequiredAlert: "من فضلكِ أدخلي رقم الموبايل أولاً.",
         botWelcomeMsg: "أهلاً بكِ مجدداً! ✨ كيف يمكننا مساعدتكِ؟",
         placeholders: {
-            name: "الاسم الثنائي على الأقل", phone: "رقم الموبايل المصري (11 رقم)", whatsapp: "رقم الواتساب (إجباري)", 
+            name: "الاسم الثنائي على الأقل", phone: "رقم الموبايل المصري (11 رقم)", whatsapp: "رقم الواتساب (إجباري)",
             province: "اختر المحافظة", address: "العنوان بالتفصيل", notes: "ملاحظات العميل (اختياري)", chat: "اكتبي استفسارك هنا..."
         },
         bookData: {}
@@ -712,19 +719,10 @@ const translations = {
         mostSelling: "Best Sellers at Besan Beauty",
         relatedBooks: "Books You May Like",
         placeholders: {
-            name: "Full Name", phone: "Phone Number", whatsapp: "WhatsApp Number", 
+            name: "Full Name", phone: "Phone Number", whatsapp: "WhatsApp Number",
             province: "Select Province", address: "Full Address Details", notes: "Order Notes (Optional)", chat: "Type your message here..."
         },
-        bookData: {
-            1: { title: "Psychological Fragility", author: "Ismail Arafa", desc: "Discusses the phenomenon of psychological fragility." },
-            2: { title: "Stockholm", author: "Ahmed Al-Hamdan", desc: "A mysterious journey between love and obsession." },
-            3: { title: "Arses 1", author: "Ahmed Al-Hamdan", desc: "A fantasy epic blending magic and adventure." },
-            4: { title: "The Alchemist", author: "Paulo Coelho", desc: "An allegorical novel by Paulo Coelho about following one's dreams." },
-            5: { title: "1984", author: "George Orwell", desc: "A dystopian social science fiction novel by George Orwell." },
-            // أضيفي هنا باقي الكتب بنفس الطريقة باستخدام الـ ID الصحيح من Supabase
-            6: { title: "English Title", author: "English Author", desc: "English Description" },
-            7: { title: "Another Book", author: "Another Author", desc: "Another Description" }
-        }
+        bookData: {}
     }
 };
 
@@ -753,7 +751,7 @@ async function triggerAutoTranslate(book) {
     };
 
     localStorage.setItem('autoTranslationCache_v2', JSON.stringify(autoTranslationCache));
-    
+
     // تحديث الواجهة فقط إذا كان المستخدم ما زال على اللغة الإنجليزية
     if (document.documentElement.lang === 'en') {
         renderBooksList(window.fullData);
@@ -771,8 +769,8 @@ async function toggleLanguage() {
     // تحديث زر اللغة نفسه
     langBtn.innerText = isAr ? "AR" : "EN";
     // تحديث اللوجو (تم تعديل الكلاس ليتطابق مع الـ HTML)
-    
-    
+
+
     // ترجمة زر العودة للمتجر
     const backBtn = document.querySelector('.back-btn');
     if (backBtn) { backBtn.innerHTML = `<i class="bi ${newLang === 'ar' ? 'bi-arrow-right' : 'bi-arrow-left'}"></i>`; backBtn.title = t.backToLibrary; backBtn.setAttribute('aria-label', t.backToLibrary); }
@@ -783,7 +781,7 @@ async function toggleLanguage() {
 
     document.getElementById('main-search').placeholder = t.search;
     document.getElementById('sticky-search').placeholder = t.quickSearch;
-    
+
     // ترجمة النصوص الشبحية (Placeholders)
     document.getElementById('customer-name').placeholder = t.placeholders.name;
     document.getElementById('customer-phone').placeholder = t.placeholders.phone;
@@ -804,7 +802,7 @@ async function toggleLanguage() {
     const barItems = document.querySelectorAll('.bottom-bar-item > span:nth-of-type(2)');
     const barTexts = [t.categoriesBottomBar, t.cart, t.wishlist, t.support];
     barTexts.forEach((text, i) => { if(barItems[i]) barItems[i].innerText = text; });
-    
+
     // تحديث المحافظات في القائمة المنسدلة
     const provinceSelect = document.getElementById('customer-province');
     if (provinceSelect) {
@@ -813,11 +811,11 @@ async function toggleLanguage() {
             if (arName) opt.innerText = (newLang === 'en') ? (await translateProvinceName(arName)) : arName;
         });
     }
-    
+
     // تحديث عناوين النوافذ الجانبية (السلة والدعم)
     const cartHeader = document.querySelector('#cart-drawer .cart-header h3');
     if(cartHeader) cartHeader.innerHTML = `${t.confirmOrderHeader} <i class="bi bi-bag-check-fill"></i>`;
-    
+
     const supportHeader = document.getElementById('client-chat-header');
     if(supportHeader) supportHeader.innerHTML = `${t.supportHeader} <i class="bi bi-headset"></i>`;
 
@@ -834,7 +832,7 @@ async function toggleLanguage() {
     if (shippingInfoMessageP) shippingInfoMessageP.innerHTML = `${t.shippingNote} <span id="shipping-message-cost">0</span> ${t.currency}`;
     const shippingInfoMessageP2 = document.querySelector('#shipping-info-message p:last-child');
     if (shippingInfoMessageP2) shippingInfoMessageP2.innerText = t.shippingDays;
-    
+
     // ترجمة جميع أزرار "تأكيد الطلب" (في السلة، مودال البطارية، والدعم) لضمان ترجمتها جميعاً فوراً
     document.querySelectorAll('.confirm-order-btn').forEach(btn => {
         btn.innerHTML = `${t.confirmOrderBtn} <i class="bi bi-bag-check-fill"></i>`;
@@ -852,7 +850,7 @@ async function toggleLanguage() {
 
     // تحديث السلة والكتب والواجهة فوراً
     if (window.currentOpenedBookId) showBookDetails(window.currentOpenedBookId, false);
-    updateCartUI(); 
+    updateCartUI();
 
     const currentData = (currentView === 'wishlist') ? window.fullData.filter(b => wishlist.includes(b.id)) : window.fullData;
     renderBooksList(currentData);
@@ -899,7 +897,7 @@ function addItemToCart(id, customQty = 1) {
 function updateCartUI() {
     const container = document.getElementById('cart-items-container');
     const totalVal = document.getElementById('total-val');
-    const booksCountVal = document.getElementById('books-count-val'); 
+    const booksCountVal = document.getElementById('books-count-val');
     const shippingSec = document.getElementById('shipping-sec');
     const shippingVal = document.getElementById('shipping-val');
     const grandTotalSec = document.getElementById('grand-total-sec');
@@ -946,18 +944,18 @@ function updateCartUI() {
                 <p>${pendingEsc(item.price)} ${t.currency}</p>
             </div>
             <div class="cart-controls">
-                <button class="qty-btn" onclick="changeQty(${idx}, -1)"><i class="bi bi-dash-circle-fill"></i></button>
+                <button class="qty-btn" aria-label="تقليل الكمية" onclick="changeQty(${idx}, -1)"><i class="bi bi-dash-circle-fill"></i></button>
                 <span class="qty-val">${pendingEsc(item.qty)}</span>
-                <button class="qty-btn" onclick="changeQty(${idx}, 1)"><i class="bi bi-plus-circle-fill"></i></button>
+                <button class="qty-btn" aria-label="زيادة الكمية" onclick="changeQty(${idx}, 1)"><i class="bi bi-plus-circle-fill"></i></button>
             </div>
-            <i class="bi bi-trash3 remove-item-btn" onclick="deleteFromCart(${idx})"></i>
+            <i class="bi bi-trash3 remove-item-btn" role="button" tabindex="0" aria-label="حذف المنتج من السلة" onclick="deleteFromCart(${idx})"></i>
         </div>`;
     }).join('');
 
     const booksTotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
     totalVal.innerText = `${booksTotal} ${t.currency}`;
-    const totalBooksQty = cart.reduce((acc, item) => acc + item.qty, 0); 
-    booksCountVal.innerText = `${totalBooksQty}`; 
+    const totalBooksQty = cart.reduce((acc, item) => acc + item.qty, 0);
+    booksCountVal.innerText = `${totalBooksQty}`;
     const selectedProvinceName = provinceSelect.value;
     shippingCost = shippingPrices[selectedProvinceName] || 0;
     if (selectedProvinceName && shippingCost > 0) {
@@ -965,9 +963,9 @@ function updateCartUI() {
         shippingInfoMessageDiv.style.display = 'block'; shippingSec.style.display = 'block'; grandTotalSec.style.display = 'block';
     } else {
         shippingInfoMessageDiv.style.display = 'none'; shippingSec.style.display = 'none'; grandTotalSec.style.display = 'none';
-    } 
+    }
     // تحديث الأرقام والعملة المترجمة داخل القوالب التي تم إنشاؤها في toggleLanguage
-    if (shippingVal) shippingVal.innerText = `${shippingCost} ${t.currency}`; 
+    if (shippingVal) shippingVal.innerText = `${shippingCost} ${t.currency}`;
     if (grandTotalVal) grandTotalVal.innerText = `${booksTotal + shippingCost} ${t.currency}`;
 }
 
@@ -1082,8 +1080,8 @@ async function populateProvinces() {
     while (provinceSelect.options.length > 1) provinceSelect.remove(1);
     const lang = document.documentElement.lang || 'ar';
     for (const [provinceName, cost] of Object.entries(shippingPrices)) {
-        const option = document.createElement('option'); 
-        option.value = provinceName; 
+        const option = document.createElement('option');
+        option.value = provinceName;
         option.innerText = (lang === 'en') ? (await translateProvinceName(provinceName)) : provinceName;
         option.setAttribute('data-ar', provinceName); // حفظ الاسم العربي كـ Data Attribute
         provinceSelect.appendChild(option);
@@ -1102,7 +1100,7 @@ async function confirmOrder() {
     const addressTextarea = document.getElementById('customer-address'); const addressError = document.getElementById('address-error');
     const notesTextarea = document.getElementById('customer-notes'); const nameError = document.getElementById('name-error');
     const phoneError = document.getElementById('phone-error'); const whatsappError = document.getElementById('whatsapp-error');
-    const provinceError = document.getElementById('province-error'); 
+    const provinceError = document.getElementById('province-error');
     const confirmBtn = document.getElementById('confirm-order-submit');
     const lang = document.documentElement.lang || 'ar';
     const t = translations[lang];
@@ -1842,11 +1840,14 @@ toggleLanguage = async function() {
 };
 
 // وظيفة مراقبة الكروت لظهورها صف بصف عند السكرول
+let cardsObserver;
 function observeBookCards() {
-    const observer = new IntersectionObserver((entries) => {
+    if (cardsObserver) cardsObserver.disconnect();
+    const observer = cardsObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
             }
         });
     }, { threshold: 0.1 });
@@ -1924,3 +1925,31 @@ function closeTopmostDrawer() {
         window.BESAN_EN.translateDom(document.documentElement.lang === 'en');
     };
 })();
+
+// Keyboard access for non-button cards and existing navigation controls.
+document.addEventListener('keydown', event => {
+    if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[role="button"][tabindex="0"], [role="link"][tabindex="0"]')) {
+        event.preventDefault(); event.target.click();
+    }
+});
+
+// A short horizontal swipe previews the secondary image without opening details.
+let cardTouchStart = null;
+let swipedCardImage = null;
+document.addEventListener('pointerdown', event => {
+    const image = event.target.closest('.book-card .image-box');
+    cardTouchStart = event.pointerType === 'touch' && image?.querySelector('.hover-img') ? { image, x: event.clientX, y: event.clientY } : null;
+}, { passive: true });
+document.addEventListener('pointerup', event => {
+    const start = cardTouchStart; cardTouchStart = null;
+    if (!start || !start.image.contains(event.target)) return;
+    const dx = event.clientX - start.x, dy = event.clientY - start.y;
+    if (Math.abs(dx) < 35 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    start.image.classList.toggle('show-secondary', dx < 0);
+    swipedCardImage = start.image;
+    setTimeout(() => { swipedCardImage = null; }, 500);
+}, { passive: true });
+document.addEventListener('pointercancel', () => { cardTouchStart = null; }, { passive: true });
+document.addEventListener('click', event => {
+    if (swipedCardImage?.contains(event.target)) { event.preventDefault(); event.stopPropagation(); swipedCardImage = null; }
+}, true);

@@ -1,5 +1,6 @@
 /* Besan Beauty — موحّد لتثبيت تطبيق العميل ولوحة الإدارة */
 (function () {
+  window.addEventListener('load', () => { if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {}); }, { once: true });
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (isStandalone && !/admin\.html/i.test(location.pathname)) return;
   const isAdmin = /admin\.html/i.test(location.pathname);
@@ -85,7 +86,6 @@
   window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installEvent = event; setTimeout(showCard, 20000); });
   window.addEventListener('appinstalled', () => { if (card) card.remove(); card = null; });
   window.addEventListener('load', () => {
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
     setTimeout(showCard, 20000);
   });
 })();
