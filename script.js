@@ -93,49 +93,26 @@ try {
 let shippingCost = 0; // تكلفة الشحن الافتراضية
 
 // قائمة المحافظات وأسعار الشحن
-const shippingPrices = {
-    "مترو": 50,
-    "القاهرة": 65,
-    "الجيزة": 65,
-    "اكتوبر": 65,
-    "التجمع": 65,
-    "المقطم": 65,
-    "البدرشين": 65,
-    "الحوامدية": 65,
-    "العبور": 65,
-    "مدينتي": 65,
-    "الشروق": 80,
-    "العاشر": 80,
-    "اسكندرية": 80,
-    "السويس": 80,
-    "بورسعيد": 80,
-    "اسماعلية": 80,
-    "الشرقية": 80,
-    "الغربية": 80,
-    "الدقهلية": 80,
-    "المنوفية": 80,
-    "كفر الشيخ": 80,
-    "البحيرة": 80,
-    "دمياط": 80,
-    "بني سويف": 85,
-    "الفيوم": 85,
-    "المنيا": 85,
-    "اسيوط": 85,
-    "سوهاج": 85,
-    "قنا": 85,
-    "الاقصر": 85,
-    "اسوان": 85,
-    "الغردقة": 100,
-    "راس غارب": 120,
-    "القصير": 120,
-    "مرسي علم": 120,
-    "سفاجة": 120
-};
+let shippingPrices = {};
+let shippingRatesReady = false;
+async function loadShippingRates() {
+    shippingRatesReady = false;
+    const { data, error } = await _supabase.rpc('get_shipping_rates');
+    if (error || !data || Array.isArray(data) || typeof data !== 'object' || !Object.keys(data).length ||
+        Object.values(data).some(v => typeof v !== 'number' || !Number.isFinite(v) || v < 0)) {
+        throw new Error('shipping-unavailable');
+    }
+    shippingPrices = data; shippingRatesReady = true;
+    return data;
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     getMyLibraryData(); // جلب البيانات عند فتح الصفحة
-    populateProvinces(); // ملء قائمة المحافظات عند تحميل الصفحة
+    populateProvinces().catch(() => {
+        const select = document.getElementById('customer-province');
+        select.options[0].textContent = 'تعذّر تحميل الشحن، حدّثي الصفحة';
+    }); // ملء قائمة المحافظات عند تحميل الصفحة
     updateGlobalCartCount(); // تحديث عداد السلة عند تحميل الصفحة
     updateGlobalWishCount(); // تحديث عداد المفضلة
     
@@ -237,10 +214,10 @@ function pushNavigationState(stateName, extraData = {}) {
     
     // منع تكرار نفس الحالة في التاريخ
     if (!currentState || currentState.view !== stateName || (stateName === 'details' && currentState.id !== extraData.id)) {
-        window.history.pushState(state, "");
+        window.history.pushState(state, '', stateName === 'details' ? `?id=${encodeURIComponent(extraData.id)}` : window.location.pathname);
         // تحديث الرابط في المتصفح ليصبح قابلاً للمشاركة
         if (stateName === 'details') {
-            window.history.replaceState(state, "", `?id=${extraData.id}`);
+            window.history.replaceState(state, "", `?id=${encodeURIComponent(extraData.id)}`);
         }
     }
 }
@@ -405,17 +382,22 @@ function renderBooksList(data) {
 }
 
 // وظيفة بناء HTML لكارت الكتاب الواحد
-function getValidImageUrl(url) {
-    if (!url) return 'https://via.placeholder.com/300x450?text=No+Image';
-    if (url.startsWith('http')) return url;
-    return `${APP_CONFIG.STORAGE_PUBLIC_BASE}${url}`;
+function safeProductId(value) { const id = String(value ?? ''); return /^[0-9]{1,12}$/.test(id) ? id : ''; }
+function getValidImageUrl(value) {
+    if (typeof value !== 'string' || !value.trim()) return 'logo-192.png';
+    try {
+        const url = new URL(value, APP_CONFIG.STORAGE_PUBLIC_BASE);
+        return url.protocol === 'https:' && !url.username && !url.password ? url.href : 'logo-192.png';
+    } catch (_) { return 'logo-192.png'; }
 }
 
 function renderBookCard(book, index) {
+    if (!safeProductId(book.id)) return '';
+    book = { ...book, id: safeProductId(book.id) };
     const img1 = getValidImageUrl(book.image_url);
     const img2 = getValidImageUrl(book.image_url2);
     const has2nd = book.image_url2 && book.image_url2 !== book.image_url;
-    const isInWishlist = wishlist.includes(book.id);
+    const isInWishlist = wishlist.some(id => String(id) === String(book.id));
     const lang = document.documentElement.lang || 'ar';
     const t = translations[lang];
     const isSoldOut = book.in_stock === false;
@@ -441,8 +423,8 @@ function renderBookCard(book, index) {
        <div class="book-card" style="animation: fadeInUp ${0.3 + (index * 0.1)}s ease-out;" onclick="showBookDetails('${book.id}')" itemscope itemtype="http://schema.org/Book">
             <div class="image-box">
                 ${has2nd ? `<div class="hover-trigger trigger-right"></div><div class="hover-trigger trigger-left"></div>` : ''}
-                <img src="${img1}" class="main-img" loading="lazy" alt="${displayTitle} - ${displayAuthor}" itemprop="image"> <!-- تحميل ذكي حسب الصف -->
-                ${has2nd ? `<img src="${img2}" class="hover-img" alt="${LT('صورة إضافية لـ', 'Additional photo of')} ${displayTitle}">` : ''}
+                <img src="${pendingEsc(img1)}" class="main-img" loading="lazy" alt="${pendingEsc(displayTitle)} - ${pendingEsc(displayAuthor)}" itemprop="image"> <!-- تحميل ذكي حسب الصف -->
+                ${has2nd ? `<img src="${pendingEsc(img2)}" class="hover-img" alt="${LT('صورة إضافية لـ', 'Additional photo of')} ${pendingEsc(displayTitle)}">` : ''}
                 <div class="image-indicators"><div class="dot active"></div>${has2nd ? `<div class="dot"></div>` : ''}</div>
             </div>
             <div class="book-actions">
@@ -451,19 +433,19 @@ function renderBookCard(book, index) {
                     <i id="wish-icon-${book.id}" class="bi bi-bookmark-heart"></i>
                 </span>
             </div>
-            <h3 itemprop="name">${displayTitle}</h3>
+            <h3 itemprop="name">${pendingEsc(displayTitle)}</h3>
             <div class="star-rating" style="justify-content: center; font-size: 0.8rem;">
                 <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-half"></i>
             </div>
-            <p class="author-name" itemprop="author">${t.by}: ${displayAuthor}</p>
-            <p class="book-desc" itemprop="description">${displayDesc}</p>
+            <p class="author-name" itemprop="author">${t.by}: ${pendingEsc(displayAuthor)}</p>
+            <p class="book-desc" itemprop="description">${pendingEsc(displayDesc)}</p>
             ${isSoldOut ? 
                 `<div class="out-of-stock-badge">${lang === 'en' ? 'Sold out' : 'نفذت الكمية'}</div>` : 
                 `<button class="cart-btn" id="add-btn-${book.id}" data-id="${book.id}" onclick="event.stopPropagation(); addItemToCart('${book.id}')">
                     <i class="bi bi-cart-plus"></i>
                 </button>`
             }
-            <div class="price-cart-container" itemprop="offers" itemscope itemtype="http://schema.org/Offer"><div class="price"><span itemprop="price">${book.price}</span> <span itemprop="priceCurrency" content="EGP">${t.currency}</span></div></div>
+            <div class="price-cart-container" itemprop="offers" itemscope itemtype="http://schema.org/Offer"><div class="price"><span itemprop="price">${pendingEsc(book.price)}</span> <span itemprop="priceCurrency" content="EGP">${t.currency}</span></div></div>
         </div>`;
 }
 
@@ -482,6 +464,8 @@ function getRelatedBooks(currentBook) {
 }
 
 function renderSmallCard(book) {
+    if (!safeProductId(book.id)) return '';
+    book = { ...book, id: safeProductId(book.id) };
     const lang = document.documentElement.lang || 'ar';
     const t = translations[lang];
     const img = getValidImageUrl(book.image_url);
@@ -489,10 +473,10 @@ function renderSmallCard(book) {
     return `
         <div class="book-card" style="padding: 8px; font-size: 0.8rem;" onclick="event.stopPropagation(); showBookDetails('${book.id}')">
             <div class="image-box" style="height: 120px;">
-                <img src="${img}" style="object-fit: cover;">
+                <img src="${pendingEsc(img)}" style="object-fit: cover;">
             </div>
-            <h3 style="font-size: 0.8rem; height: 35px; overflow: hidden;">${book.title}</h3>
-            <div class="price" style="font-size: 0.9rem;">${book.price} ${t.currency}</div>
+            <h3 style="font-size: 0.8rem; height: 35px; overflow: hidden;">${pendingEsc(book.title)}</h3>
+            <div class="price" style="font-size: 0.9rem;">${pendingEsc(book.price)} ${t.currency}</div>
             <button class="cart-btn ${isInCart ? 'success' : ''}" data-id="${book.id}" style="width: 25px; height: 25px; font-size: 0.8rem; bottom: 8px; left: 8px;" onclick="event.stopPropagation(); addItemToCart('${book.id}')">
                 <i class="bi ${isInCart ? 'bi-check-lg' : 'bi-cart-plus'}"></i>
             </button>
@@ -502,6 +486,7 @@ function renderSmallCard(book) {
 
 let currentDetailsQty = 1;
 async function showBookDetails(id, shouldPush = true) {
+    clearTimeout(detailsCloseTimer);
     const detailsPage = document.getElementById('book-details-page');
     const isAlreadyOpen = detailsPage.classList.contains('active');
     const isSameBook = String(window.currentOpenedBookId) === String(id);
@@ -512,6 +497,7 @@ async function showBookDetails(id, shouldPush = true) {
         return;
     }
 
+    if (!safeProductId(id)) return;
     const book = window.fullData.find(b => String(b.id) === String(id));
     if (!book) return;
 
@@ -534,7 +520,7 @@ async function showBookDetails(id, shouldPush = true) {
         displayDesc = cache?.desc || (book.description_en || (t.bookData[book.id]?.desc || displayDesc));
     }
 
-    const isInWishlist = wishlist.includes(book.id);
+    const isInWishlist = wishlist.some(id => String(id) === String(book.id));
     const isInCart = cart.find(i => String(i.id) === String(book.id));
     const isSoldOut = book.in_stock === false;
     const img1 = getValidImageUrl(book.image_url);
@@ -551,8 +537,8 @@ async function showBookDetails(id, shouldPush = true) {
         <div class="details-image">
             <div class="details-image-container" id="details-img-container">
                 <div class="details-slider" id="details-slider">
-                    <img src="${img1}" alt="${book.title} - ${book.brand}">
-                    ${has2nd ? `<img src="${img2}" alt="${LT('عرض إضافي لـ', 'Additional view of')} ${book.title}">` : ''}
+                    <img src="${pendingEsc(img1)}" alt="${pendingEsc(book.title)} - ${pendingEsc(book.brand)}">
+                    ${has2nd ? `<img src="${pendingEsc(img2)}" alt="${LT('عرض إضافي لـ', 'Additional view of')} ${pendingEsc(book.title)}">` : ''}
                 </div>
                 ${has2nd ? `
                 <button class="slider-arrow arrow-prev" onclick="event.stopPropagation(); slideDetails(0)"><i class="bi bi-chevron-right"></i></button>
@@ -568,10 +554,10 @@ async function showBookDetails(id, shouldPush = true) {
                 <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
                 <span style="color: var(--desc-color); font-size: 0.9rem; margin-right: 10px;">(5.0)</span>
             </div>
-            <h1>${displayTitle}</h1>
-            <p class="author">${t.by}: ${displayAuthor}</p>
-            <p class="full-desc">${displayDesc}</p>
-            <div style="font-size: 2rem; color: var(--paper-light); margin-bottom: 25px; font-weight: bold;">${book.price} ${t.currency}</div>
+            <h1>${pendingEsc(displayTitle)}</h1>
+            <p class="author">${t.by}: ${pendingEsc(displayAuthor)}</p>
+            <p class="full-desc">${pendingEsc(displayDesc)}</p>
+            <div style="font-size: 2rem; color: var(--paper-light); margin-bottom: 25px; font-weight: bold;">${pendingEsc(book.price)} ${t.currency}</div>
             <div class="details-actions">
                 ${isSoldOut ? 
                     `<div class="out-of-stock-badge" style="font-size: 1.3rem; padding: 15px 40px; flex: 1; text-align: center;">${lang === 'en' ? 'Sold out' : 'نفذت الكمية من Besan Beauty 🌸'}</div>` :
@@ -634,20 +620,19 @@ function updateDetQty(delta) {
     if (qtyDisplay) qtyDisplay.innerText = currentDetailsQty;
 }
 
+let detailsCloseTimer;
 function closeBookDetails(shouldGoBack = true) {
     const detailsPage = document.getElementById('book-details-page');
     if (!detailsPage.classList.contains('active')) return;
     detailsPage.classList.remove('active');
-    setTimeout(() => {
+    clearTimeout(detailsCloseTimer);
+    detailsCloseTimer = setTimeout(() => {
+        if (detailsPage.classList.contains('active')) return;
         detailsPage.style.display = 'none';
         window.currentOpenedBookId = null;
-        document.title = LT("Besan Beauty - عالم الجمال والعطور", "Besan Beauty - World of Beauty & Fragrance"); // إعادة العنوان الأصلي
-        window.history.replaceState({ view: 'home' }, "", window.location.pathname); // تنظيف الرابط
+        document.title = LT('Besan Beauty - عالم الجمال والعطور', 'Besan Beauty - World of Beauty & Fragrance');
     }, 500);
     removeLockScroll();
-    
-    // لا حاجة لاستدعاء updateLayersScroll هنا لأن الصفحة ستختفي تماماً
-
     if (shouldGoBack && window.history.state?.view === 'details') window.history.back();
 }
 
@@ -887,6 +872,7 @@ async function translateProvinceName(provinceName) {
 function isPriceMismatch(e) { return !!(e && /price_mismatch/.test((e.message || '') + ' ' + (e.details || '') + ' ' + (e.hint || ''))); }
 async function handlePriceMismatch() {
     try {
+        await populateProvinces();
         const { data } = await _supabase.from('products').select('id,price,in_stock');
         if (Array.isArray(data)) {
             cart.forEach(it => { const f = data.find(b => String(b.id) === String(it.id)); if (f) { it.price = f.price; } });
@@ -898,7 +884,10 @@ async function handlePriceMismatch() {
 }
 
 function addItemToCart(id, customQty = 1) {
+    if (orderSubmitting || PAY.busy) return;
+    if (!safeProductId(id)) return;
     const book = window.fullData.find(b => String(b.id) === String(id));
+    if (!book || book.in_stock === false) return;
     const inCart = cart.find(i => String(i.id) === String(id));
     if (inCart) inCart.qty += customQty;
     else cart.push({ ...book, qty: customQty });
@@ -925,6 +914,7 @@ function updateCartUI() {
 
     if (window.fullData) {
         window.fullData.forEach(book => {
+            if (!safeProductId(book.id)) return;
             const isInCart = cart.find(i => String(i.id) === String(book.id));
             const btns = document.querySelectorAll(`[data-id="${book.id}"]`);
             btns.forEach(btn => {
@@ -950,14 +940,14 @@ function updateCartUI() {
         // ترجمة اسم الكتاب داخل السلة تلقائياً
         let displayTitle = (lang === 'en' && autoTranslationCache[item.id]) ? autoTranslationCache[item.id].title : item.title;
         return `<div class="cart-item">
-            <img src="${item.image_url}" alt="${displayTitle}">
+            <img src="${pendingEsc(getValidImageUrl(item.image_url))}" alt="${pendingEsc(displayTitle)}">
             <div class="cart-item-details">
-                <h4>${displayTitle}</h4>
-                <p>${item.price} ${t.currency}</p>
+                <h4>${pendingEsc(displayTitle)}</h4>
+                <p>${pendingEsc(item.price)} ${t.currency}</p>
             </div>
             <div class="cart-controls">
                 <button class="qty-btn" onclick="changeQty(${idx}, -1)"><i class="bi bi-dash-circle-fill"></i></button>
-                <span class="qty-val">${item.qty}</span>
+                <span class="qty-val">${pendingEsc(item.qty)}</span>
                 <button class="qty-btn" onclick="changeQty(${idx}, 1)"><i class="bi bi-plus-circle-fill"></i></button>
             </div>
             <i class="bi bi-trash3 remove-item-btn" onclick="deleteFromCart(${idx})"></i>
@@ -1043,7 +1033,7 @@ function showWishlist(shouldPush = true) {
 }
 
 function showCategoriesAndHome(shouldPush = true) {
-    currentView = 'home'; closeCart(); closeSupport();
+    currentView = 'home'; closeCart(false); closeSupport(false); closeBookDetails(false);
     document.getElementById('main-search').value = ''; document.getElementById('sticky-search').value = '';
     const topItems = document.querySelectorAll('.category-item'); const bottomItems = document.querySelectorAll('.dropdown-item');
     topItems.forEach(i => i.classList.remove('active')); bottomItems.forEach(i => i.classList.remove('active'));
@@ -1087,6 +1077,9 @@ function shopNow() { showCategoriesAndHome(); }
 
 async function populateProvinces() {
     const provinceSelect = document.getElementById('customer-province');
+    const selected = provinceSelect.value;
+    await loadShippingRates();
+    while (provinceSelect.options.length > 1) provinceSelect.remove(1);
     const lang = document.documentElement.lang || 'ar';
     for (const [provinceName, cost] of Object.entries(shippingPrices)) {
         const option = document.createElement('option'); 
@@ -1095,10 +1088,14 @@ async function populateProvinces() {
         option.setAttribute('data-ar', provinceName); // حفظ الاسم العربي كـ Data Attribute
         provinceSelect.appendChild(option);
     }
-    provinceSelect.addEventListener('change', updateCartUI);
+    provinceSelect.value = selected;
+    provinceSelect.onchange = updateCartUI;
+    updateCartUI();
 }
 
+let orderSubmitting = false;
 async function confirmOrder() {
+    if (orderSubmitting || PAY.busy || document.getElementById('pay-overlay').style.display === 'flex') return;
     if (cart.length === 0) { alert(document.documentElement.lang === 'en' ? translations.en.cartEmptyAlert : "السلة فارغة! لا يمكن تأكيد طلب بدون منتجات."); return; }
     const nameInput = document.getElementById('customer-name'); const phoneInput = document.getElementById('customer-phone');
     const whatsappInput = document.getElementById('customer-whatsapp'); const provinceSelect = document.getElementById('customer-province');
@@ -1106,7 +1103,7 @@ async function confirmOrder() {
     const notesTextarea = document.getElementById('customer-notes'); const nameError = document.getElementById('name-error');
     const phoneError = document.getElementById('phone-error'); const whatsappError = document.getElementById('whatsapp-error');
     const provinceError = document.getElementById('province-error'); 
-    const confirmBtn = document.querySelector('.confirm-order-btn');
+    const confirmBtn = document.getElementById('confirm-order-submit');
     const lang = document.documentElement.lang || 'ar';
     const t = translations[lang];
     nameError.style.display = 'none'; phoneError.style.display = 'none'; whatsappError.style.display = 'none'; provinceError.style.display = 'none'; addressError.style.display = 'none';
@@ -1118,10 +1115,14 @@ async function confirmOrder() {
     if (provinceSelect.value === "") { provinceError.innerText = t.provinceErrorMsg; provinceError.style.display = 'block'; isValid = false; }
     if (addressTextarea.value.trim().length < 5) { addressError.innerText = t.addressErrorMsg; addressError.style.display = 'block'; isValid = false; }
     if (!isValid) return;
+    if (!shippingRatesReady || !Object.hasOwn(shippingPrices, provinceSelect.value)) { alert('تعذّر تحميل تكلفة الشحن. حدّثي الصفحة وحاولي تاني.'); return; }
     const booksTotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
     const totalAmount = booksTotal + shippingCost;
-    const orderData = { customer_name: nameInput.value.trim(), customer_phone: phoneInput.value.trim(), customer_whatsapp: whatsappInput.value.trim(), province: provinceSelect.value, address: addressTextarea.value.trim(), notes: notesTextarea ? notesTextarea.value.trim() : "", items: cart, total_amount: totalAmount, shipping_cost: shippingCost, status: 'pending' };
+    const orderData = { customer_name: nameInput.value.trim(), customer_phone: phoneInput.value.trim(), customer_whatsapp: whatsappInput.value.trim(), province: provinceSelect.value, address: addressTextarea.value.trim(), notes: notesTextarea ? notesTextarea.value.trim() : "", items: cart.map(item => ({ ...item })), total_amount: totalAmount, shipping_cost: shippingCost, status: 'pending' };
 
+    orderSubmitting = true;
+    confirmBtn.disabled = true; confirmBtn.textContent = t.processingOrder;
+    try {
     // هل المطلوب عربون؟ (الإعدادات بتيجي من لوحة الأدمن)
     let settings = null, legacy = false;
     try { settings = await loadPaymentSettings(); }
@@ -1132,7 +1133,6 @@ async function confirmOrder() {
     const deposit = (!legacy && settings && settings.deposit_enabled) ? calcDeposit(settings, booksTotal) : 0;
     if (deposit > 0) { openPayModal({ mode: 'order', orderData, settings, deposit, booksTotal }); return; }
 
-    try {
         confirmBtn.disabled = true; confirmBtn.innerHTML = `${t.processingOrder} <i class="bi bi-hourglass-split"></i>`;
         const { data: placed, error } = await _supabase.rpc('place_order', { p: orderData });
         if (isPriceMismatch(error)) { await handlePriceMismatch(); return; }
@@ -1142,7 +1142,7 @@ async function confirmOrder() {
         resetOrderForm();
         closeCart();
     } catch (err) { console.error(err); alert(`${t.orderError} ${LT('جرّبي تاني بعد شوية، أو كلمينا على واتساب.', 'Please try again in a moment, or contact us on WhatsApp.')}`); }
-    finally { confirmBtn.disabled = false; confirmBtn.innerHTML = `${t.confirmOrderBtn} <i class="bi bi-bag-check-fill"></i>`; }
+    finally { orderSubmitting = false; confirmBtn.disabled = false; confirmBtn.innerHTML = `${t.confirmOrderBtn} <i class="bi bi-bag-check-fill"></i>`; }
 }
 
 function resetOrderForm() {
@@ -1157,7 +1157,7 @@ const PAY_TEXT = {
     ar: {
         title: 'ادفعي العربون لتأكيد طلبك', titleAttach: 'ارفعي إيصال الدفع',
         sub: 'الطلب بيتسجّل بعد ما تبعتي إيصال التحويل، وهنراجعه ونأكد لحضرتك.',
-        subAttach: 'اكتبي رقم الموبايل اللي سجّلتي بيه الطلب وارفعي صورة الإيصال.',
+        subAttach: 'لو مش داخلة للطلب، اكتبي الموبايل والكود السري اللي ظهر وقت تسجيله، وبعدها ارفعي الإيصال.',
         amountLabel: 'العربون المطلوب', copy: 'نسخ', copied: 'تم ✓', cur: 'ج.م',
         products: 'قيمة المنتجات', shipping: 'الشحن', deposit: 'العربون', remaining: 'الباقي عند الاستلام',
         walletLabel: 'فودافون كاش', instapayLabel: 'إنستاباي',
@@ -1176,7 +1176,7 @@ const PAY_TEXT = {
     en: {
         title: 'Pay the deposit to confirm your order', titleAttach: 'Upload your payment receipt',
         sub: 'Your order is placed once you send the transfer receipt. We will review and confirm it.',
-        subAttach: 'Enter the phone number you used for the order and upload the receipt photo.',
+        subAttach: 'Sign in to your order with its phone number and 6-digit code, then upload your receipt.',
         amountLabel: 'Deposit due', copy: 'Copy', copied: 'Done ✓', cur: 'EGP',
         products: 'Items', shipping: 'Shipping', deposit: 'Deposit', remaining: 'Remaining on delivery',
         walletLabel: 'Vodafone Cash', instapayLabel: 'InstaPay',
@@ -1234,7 +1234,10 @@ function payFillStatic() {
 }
 
 function openPayModal(opts) {
-    PAY.mode = opts.mode; PAY.settings = opts.settings; PAY.orderData = opts.orderData || null; PAY.deposit = opts.deposit || 0; PAY.file = null; PAY.busy = false;
+    if (PAY.busy) return;
+    PAY.targetOrderId = safeProductId(opts.targetOrderId);
+    PAY.requireAuth = !!(PAY.targetOrderId && String(chatSess()?.order_id) !== PAY.targetOrderId);
+    PAY.mode = opts.mode; PAY.settings = opts.settings; PAY.orderData = opts.orderData || null; PAY.deposit = opts.deposit || 0; PAY.file = null; PAY.busy = false; PAY.completed = false;
     payFillStatic();
     const s = opts.settings || {};
     const isOrder = opts.mode === 'order';
@@ -1244,7 +1247,9 @@ function openPayModal(opts) {
     document.getElementById('pay-attach-fields').style.display = isOrder ? 'none' : 'block';
     document.getElementById('pay-later').style.display = isOrder ? 'block' : 'none';
     document.getElementById('pay-submit').textContent = payT(isOrder ? 'submit' : 'submitAttach');
-    document.getElementById('pay-expiry-note').style.display = 'none';
+    const expiryNote = document.getElementById('pay-expiry-note');
+    expiryNote.textContent = 'احتفظي بالكود السري. رفع الإيصال بيتطلب الدخول لنفس الطلب بالموبايل والكود.';
+    expiryNote.style.display = 'block';
     if (isOrder) {
         document.getElementById('pay-deposit').textContent = payFmt(PAY.deposit);
         const total = opts.orderData.total_amount;
@@ -1256,6 +1261,10 @@ function openPayModal(opts) {
     } else {
         const saved = localStorage.getItem('pendingReceiptPhone');
         document.getElementById('pay-phone').value = saved || '';
+        document.getElementById('pay-code').value = '';
+        const session = chatSess();
+        document.getElementById('pay-attach-fields').style.display = session && !PAY.requireAuth ? 'none' : 'block';
+        if (session && !PAY.requireAuth) document.getElementById('pay-sub').textContent = 'الإيصال هيرتبط بالطلب رقم ' + String(session.order_id) + ' اللي إنتِ داخلة عليه.';
     }
     const w = (s.wallet_number || '').trim(), ip = (s.instapay_address || '').trim();
     document.getElementById('pay-wallet').textContent = w; document.getElementById('pay-method-wallet').style.display = w ? 'flex' : 'none';
@@ -1266,12 +1275,12 @@ function openPayModal(opts) {
     document.getElementById('pay-view-done').style.display = 'none';
     const ov = document.getElementById('pay-overlay'); ov.style.display = 'flex'; ov.scrollTop = 0; syncScrollLock();
 }
-async function openReceiptOnly() {
+async function openReceiptOnly(targetOrderId) {
     let settings = null;
     try { settings = await loadPaymentSettings(); } catch (e) { alert(payT('settingsError')); return; }
-    openPayModal({ mode: 'attach', settings });
+    openPayModal({ mode: 'attach', settings, targetOrderId });
 }
-function closePayModal() { document.getElementById('pay-overlay').style.display = 'none'; PAY.busy = false; syncScrollLock(); }
+function closePayModal() { if (PAY.busy) return; document.getElementById('pay-overlay').style.display = 'none'; PAY.busy = false; syncScrollLock(); }
 
 function payError(msg) { const el = document.getElementById('pay-error'); el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
 function payResetUpload() {
@@ -1315,21 +1324,31 @@ async function payUploadReceipt(file) {
 }
 
 async function payConfirm(withReceipt) {
-    if (PAY.busy) return;
+    if (PAY.busy || PAY.completed) return;
     payError('');
     const submitBtn = document.getElementById('pay-submit'), laterBtn = document.getElementById('pay-later');
     const lock = on => { PAY.busy = on; submitBtn.disabled = on; laterBtn.disabled = on; if (on) submitBtn.textContent = payT('sending'); else submitBtn.textContent = payT(PAY.mode === 'order' ? 'submit' : 'submitAttach'); };
     try {
         if (PAY.mode === 'attach') {
-            const sess = chatSess();
-            if (!sess) { payError(document.documentElement.lang === 'en' ? 'Please sign in from Support (phone + 6-digit code) first.' : 'ادخلي الأول من مركز الدعم بالموبايل والكود السري المكوّن من 6 أرقام، وبعدها ارفعي الإيصال.'); return; }
             if (!PAY.file) { payError(payT('needFile')); return; }
             lock(true);
+            let sess = PAY.requireAuth ? null : chatSess();
+            if (!sess) {
+                const phone = normalizePhone(document.getElementById('pay-phone').value);
+                const code = document.getElementById('pay-code').value.trim();
+                if (!/^(010|011|012|015)[0-9]{8}$/.test(phone)) throw new Error(payT('needPhone'));
+                if (!/^[0-9]{6}$/.test(code)) throw new Error('اكتبي الكود السري المكوّن من 6 أرقام.');
+                const result = await loginOrderSession(phone, code);
+                if (!result) throw new Error('الموبايل أو الكود غير صحيح، أو الدخول موقوف مؤقتًا. جرّبي من مركز الدعم.');
+                document.getElementById('pay-code').value = '';
+                sess = chatSess();
+            }
+            if (PAY.targetOrderId && String(sess?.order_id) !== PAY.targetOrderId) throw new Error('الكود ده لطلب تاني. استخدمي كود الطلب الظاهر في الملخّص.');
             const path = await payUploadReceipt(PAY.file);
             const { data, error } = await _supabase.rpc('chat_attach_receipt_s', { p_token: sess.token, p_path: path });
             if (error) throw error;
             if (!data) { lock(false); payError(payT('noOrder')); return; }
-            localStorage.removeItem('pendingReceiptPhone'); { const pp = pendingLoad(); if (pp) { pp.receiptUploaded = true; localStorage.setItem(PENDING_KEY, JSON.stringify(pp)); } } renderPendingBox();
+            localStorage.removeItem('pendingReceiptPhone'); { const pp = pendingLoad(); if (pp && String(pp.orderId) === String(sess.order_id)) { pp.receiptUploaded = true; localStorage.setItem(PENDING_KEY, JSON.stringify(pp)); } } renderPendingBox();
             payShowDone(payT('doneAttachTitle'), payT('doneAttach')); lock(false); return;
         }
         if (withReceipt && !PAY.file) { payError(payT('needFile')); return; }
@@ -1344,7 +1363,7 @@ async function payConfirm(withReceipt) {
         if (!withReceipt) localStorage.setItem('pendingReceiptPhone', od.customer_phone); else localStorage.removeItem('pendingReceiptPhone');
         const info = { phone: od.customer_phone, createdAt: Date.now(), receiptUploaded: !!withReceipt, province: od.province,
             deposit: PAY.deposit, total: od.total_amount, shipping: od.shipping_cost, booksTotal: od.total_amount - od.shipping_cost,
-            items: (od.items || []).map(i => ({ title: i.title, qty: i.qty, price: i.price })) };
+            orderId: placed.id || placed.order_id, items: (od.items || []).map(i => ({ title: i.title, qty: i.qty, price: i.price })) };
         localStorage.setItem(PENDING_KEY, JSON.stringify(info));
         const detail = pendingHTML(info, false);
         chatSessionStart(placed);   // دخول تلقائي للدعم 72 ساعة (جلسة على السيرفر)
@@ -1359,7 +1378,7 @@ async function payConfirm(withReceipt) {
 /* ---------- رسالة الطلب المنتظر للإيصال + العدّاد التنازلي ---------- */
 const PENDING_KEY = 'pendingReceiptOrder';
 function pendingLoad() { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || 'null'); } catch (e) { return null; } }
-function pendingDeadline(p) { return p.createdAt + (p.expiryHours || 24) * 3600 * 1000; }
+function pendingDeadline(p) { return p.expiresAt ? Date.parse(p.expiresAt) : null; }
 function pendingFmt(ms) {
     ms = Math.max(0, ms); const t = Math.floor(ms / 1000);
     const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
@@ -1395,7 +1414,25 @@ function pendingHTML(p, withBtn) {
             <div><span>${L.rem}</span><span>${payFmt(rem)} ${cur}</span></div>
         </div>
         <p class="pm-how">${L.how}</p>
-        ${(withBtn && !p.receiptUploaded) ? `<button type="button" class="pm-btn" onclick="openReceiptOnly()"><i class="bi bi-paperclip"></i> ${L.btn}</button>` : ''}`;
+        ${(withBtn && !p.receiptUploaded) ? `<button type="button" class="pm-btn" data-order-id="${pendingEsc(safeProductId(p.orderId))}" onclick="openReceiptOnly(this.dataset.orderId)"><i class="bi bi-paperclip"></i> ${L.btn}</button>` : ''}`;
+}
+
+function normalizePhone(value) {
+    let phone = String(value || '').replace(/\D/g, '');
+    if (phone.startsWith('20') && phone.length > 11) phone = phone.slice(2);
+    if (phone.length === 10 && !phone.startsWith('0')) phone = '0' + phone;
+    return phone;
+}
+async function loginOrderSession(phone, code) {
+    const response = await fetch(supabaseUrl + '/functions/v1/chat-login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', apikey: supabaseKey, Authorization: 'Bearer ' + supabaseKey },
+        body: JSON.stringify({ phone, code })
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok || !data.token) return false;
+    chatStopSync();
+    chatSessSave({ token: data.token, order_id: data.order_id, expires_at: data.expires_at });
+    return true;
 }
 
 /* ---------- جلسة الدعم: تتحقق من السيرفر وتنتهي بعد 72 ساعة ---------- */
@@ -1440,6 +1477,7 @@ function renderPendingBox() {
 document.addEventListener('DOMContentLoaded', renderPendingBox);
 
 function payShowDone(title, text, detailHTML) {
+    PAY.completed = true;
     document.getElementById('pay-done-title').textContent = title; document.getElementById('pay-done-text').textContent = text;
     const dd = document.getElementById('pay-done-detail');
     if (dd) { dd.innerHTML = detailHTML || ''; dd.style.display = detailHTML ? 'block' : 'none'; }
@@ -1450,7 +1488,7 @@ function payShowDone(title, text, detailHTML) {
 
 let chatSubscription = null;
 let typingTimer;
-function showSupport() {
+function showSupport(shouldPush = true) {
     chatAutoExpiryCheck();
     document.getElementById('support-drawer').classList.add('open'); document.getElementById('drawer-overlay').classList.add('open');
     addLockScroll();
@@ -1463,7 +1501,7 @@ function showSupport() {
     setTimeout(() => { const cb = document.getElementById('chat-body'); if(cb) cb.scrollTop = cb.scrollHeight; }, 100);
 
     document.querySelectorAll('.bottom-bar-item').forEach(i => i.classList.remove('active'));
-    document.getElementById('support-tab').classList.add('active'); pushNavigationState('support');
+    document.getElementById('support-tab').classList.add('active'); if (shouldPush) pushNavigationState('support');
     if (chatSess()) {
         document.getElementById('chat-auth-section').style.display = 'none'; document.getElementById('end-chat-btn').style.display = 'block';
         document.getElementById('chat-body').style.display = 'flex'; document.getElementById('support-drawer').classList.remove('logged-out');
@@ -1861,6 +1899,12 @@ function appendMessage(text, side, cid, state) {
 }
 
 // وظيفة لإغلاق الدرج العلوي عند النقر على الـ overlay
+function closeBatteryGuide() {
+    const modal = document.getElementById('battery-modal');
+    if (modal) { modal.classList.remove('open', 'active'); modal.style.display = 'none'; }
+    syncScrollLock();
+}
+
 function closeTopmostDrawer() {
     const supportDrawer = document.getElementById('support-drawer');
     const cartDrawer = document.getElementById('cart-drawer');

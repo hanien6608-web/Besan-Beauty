@@ -231,6 +231,7 @@
         </div>
         
         <!-- حاوية المنتجات المضافة -->
+        <section id="pending-receipt-box" class="pay-msg pay-msg-cart" aria-live="polite" style="display:none"></section>
         <div id="cart-items-container"></div>
         
         <!-- قسم تفاصيل الطلب والحسابات: يختفي تماماً لو السلة فارغة -->
@@ -286,7 +287,7 @@
                 <h4>الإجمالي الكلي: <span id="grand-total-val">0</span></h4>
             </div>
 
-            <button class="confirm-order-btn" onclick="confirmOrder()">تأكيد الطلب <i class="bi bi-bag-check-fill"></i></button>
+            <button id="confirm-order-submit" class="confirm-order-btn" type="button" onclick="confirmOrder()">تأكيد الطلب <i class="bi bi-bag-check-fill"></i></button>
             </div>
         </div>
         <div class="pay-later-wrap">
@@ -330,8 +331,10 @@
                 <div id="pay-attach-fields" class="pay-attach" style="display:none">
                     <div class="input-group">
                         <i class="bi bi-phone"></i>
-                        <input type="tel" id="pay-phone" placeholder="">
+                        <label for="pay-phone" class="sr-only">رقم موبايل الطلب</label>
+                        <input type="tel" id="pay-phone" autocomplete="tel" placeholder="">
                     </div>
+                    <div class="input-group"><label for="pay-code" class="sr-only">الكود السري للطلب</label><i class="bi bi-key"></i><input type="password" id="pay-code" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="الكود السري للطلب (6 أرقام)"></div>
                 </div>
 
                 <label class="pay-upload" id="pay-upload-label" for="pay-file">
