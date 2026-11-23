@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://hanien6608-web.github.io/Besan-Beauty/sitemap.xml

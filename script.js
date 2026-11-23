@@ -221,10 +221,10 @@ function pushNavigationState(stateName, extraData = {}) {
 
     // منع تكرار نفس الحالة في التاريخ
     if (!currentState || currentState.view !== stateName || (stateName === 'details' && currentState.id !== extraData.id)) {
-        window.history.pushState(state, '', stateName === 'details' ? `?id=${encodeURIComponent(extraData.id)}` : window.location.pathname);
+        window.history.pushState(state, '', stateName === 'details' ? productPageUrl(extraData.id) : 'index.html');
         // تحديث الرابط في المتصفح ليصبح قابلاً للمشاركة
         if (stateName === 'details') {
-            window.history.replaceState(state, "", `?id=${encodeURIComponent(extraData.id)}`);
+            window.history.replaceState(state, "", productPageUrl(extraData.id));
         }
     }
 }
@@ -307,11 +307,16 @@ async function getMyLibraryData() {
     const shuffledData = [...data].sort((a, b) => Number(a.id) - Number(b.id));
 
     window.fullData = shuffledData;
+    document.getElementById('product-search-content')?.remove();
     renderBooksList(shuffledData);
 
     // فحص الرابط عند التحميل لفتح كتاب معين مباشرة (Deep Linking) بعد جلب البيانات
     const urlParams = new URLSearchParams(window.location.search);
-    const bookId = urlParams.get('id');
+    const bookId = urlParams.get('id') || document.body.dataset.productId;
+    if (bookId) {
+        window.history.replaceState({view:'home'}, '', 'index.html');
+        pushNavigationState('details', {id:bookId});
+    }
     if (bookId) showBookDetails(bookId, false);
 
     // تفعيل التحديث اللحظي للكتب (إضافة، تعديل، حذف)
@@ -389,6 +394,10 @@ function renderBooksList(data) {
 }
 
 // وظيفة بناء HTML لكارت الكتاب الواحد
+function productPageUrl(id) {
+    const value=safeProductId(id);
+    return (window.BESAN_PRODUCT_PAGES || []).includes(value) ? `product-${value}.html` : `index.html?id=${encodeURIComponent(value)}`;
+}
 function safeProductId(value) { const id = String(value ?? ''); return /^[0-9]{1,12}$/.test(id) ? id : ''; }
 // Smaller delivery copies only. Original database URLs and pixel dimensions are retained.
 const optimizedProductImages = Object.freeze({"https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795074744093.jpg":"assets/product-images/15c68078b7ba5bdf8994.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795076500481.jpg":"assets/product-images/c6dbaade417593b266cf.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795148426435.jpg":"assets/product-images/3289d85d2611ed2269f7.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795168159076.jpg":"assets/product-images/8099c71e4051bdf80920.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795168213236.jpg":"assets/product-images/cc39018ab575ad7667d3.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795168278767.jpg":"assets/product-images/879a144ca345d6ab58fb.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795172536379.jpg":"assets/product-images/f9834bf20b648a97bc07.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795172649796.jpg":"assets/product-images/4b50607447f2e852ae80.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795173036985.jpg":"assets/product-images/ecc92a1044b8731e12f0.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795173043640.jpg":"assets/product-images/5d95f0ea5b9b59776633.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795173123463.jpg":"assets/product-images/9478d4a1ab6d3990e5dc.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795173238581.jpg":"assets/product-images/c748f1b741f2caa4ff93.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795173390058.jpg":"assets/product-images/3c3b07c9acc1e2d606a8.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795185296895.png":"assets/product-images/dd4bd2b49eaaf11e60ac.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795185544876.png":"assets/product-images/4d4fc093e405da4e3655.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795185648424.png":"assets/product-images/a2b01fe14d272b43192a.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795185782130.png":"assets/product-images/a2bf6e3400f01ec4d8e0.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795185979410.jpg":"assets/product-images/285fbd54ab9076f89fb9.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795186303689.jpg":"assets/product-images/204f55f2bc881fe30913.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795186467337.jpg":"assets/product-images/85a58968fc3cbdbd7f70.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795186602046.jpg":"assets/product-images/26062511646d5cdfc340.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795186771105.jpg":"assets/product-images/99652004c49a1d057a43.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795186777265.jpg":"assets/product-images/397996a53e193ab3d6d1.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795186927153.jpg":"assets/product-images/2a6fba0f23bb6ae5b4fe.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795186933238.jpg":"assets/product-images/beffff2fabd19dd0c6c1.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188078078.jpg":"assets/product-images/425ee55432821a2a4b62.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188243528.jpg":"assets/product-images/911759e5b59aeb3adb4f.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188249767.jpg":"assets/product-images/44464c52c0ce727e8903.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188364726.jpg":"assets/product-images/23bbc5e4c688f1c2ef6f.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188370622.jpg":"assets/product-images/093cf8f7e4b414ca38de.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188496654.jpg":"assets/product-images/ee8fb62f13632be6ec66.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188635010.jpg":"assets/product-images/bdaa428befb03c53ad8d.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188729567.jpg":"assets/product-images/f9152103415ac0be61da.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188852130.jpg":"assets/product-images/6409a68baaee95e12aa2.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795188932046.jpg":"assets/product-images/f1909635177f0e8e4b00.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189385089.jpg":"assets/product-images/9ca9e67c7b05b4db34f6.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189522589.jpg":"assets/product-images/85e43c184da51472b639.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189528484.jpg":"assets/product-images/7e12570ffcc9af0e02e6.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189609459.jpg":"assets/product-images/cf80a3413e18170e0f43.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189746199.jpg":"assets/product-images/f7a4fbf8e14a0326e58e.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189751732.jpg":"assets/product-images/26189a0fbbf4a317743d.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189883459.jpg":"assets/product-images/69180a1bf19f0a572b12.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795189970129.jpg":"assets/product-images/7858129cf066d483e216.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795190146692.jpg":"assets/product-images/21e1e944cd22a3ddf4b0.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795190295241.jpg":"assets/product-images/663cf0db89d1492c7bd4.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795190301501.jpg":"assets/product-images/a0647c7df5e357cea365.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795437550393.png":"assets/product-images/fe63c7de2673611aa514.webp","https://gagjylyqxihrwdibslfu.supabase.co/storage/v1/object/public/product-images/1795437550708.png":"assets/product-images/42d81166a1d4870ed3b2.webp"});
@@ -454,7 +463,7 @@ function renderBookCard(book, index) {
                     <i id="wish-icon-${book.id}" class="bi bi-bookmark-heart"></i>
                 </span>
             </div>
-            <h3 itemprop="name"><button type="button" class="product-title-btn" onclick="event.stopPropagation(); showBookDetails('${book.id}')">${pendingEsc(displayTitle)}</button></h3>
+            <h3 itemprop="name"><a class="product-title-btn" href="${productPageUrl(book.id)}" onclick="event.stopPropagation();if(event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();event.stopPropagation();showBookDetails('${book.id}')}">${pendingEsc(displayTitle)}</a></h3>
             <p class="author-name">${t.by}: <span itemprop="brand" itemscope itemtype="https://schema.org/Brand"><span itemprop="name">${pendingEsc(displayAuthor)}</span></span></p>
             <p class="book-desc" itemprop="description">${pendingEsc(displayDesc)}</p>
             ${isSoldOut ?
@@ -548,6 +557,7 @@ async function showBookDetails(id, shouldPush = true) {
     // تحسين SEO: تغيير عنوان الصفحة عند فتح تفاصيل الكتاب
     const originalTitle = document.title;
     document.title = `${book.title} | Besan Beauty`;
+    setProductMeta(book);
     // تتبع في جوجل أن الزائر شاهد هذا الكتاب
     if (typeof gtag === 'function') gtag('event', 'view_item', { items: [{ item_name: book.title, price: book.price }] });
 
@@ -568,10 +578,6 @@ async function showBookDetails(id, shouldPush = true) {
             </div>
         </div>
         <div class="details-info">
-            <div class="star-rating">
-                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i>
-                <span style="color: var(--desc-color); font-size: 0.9rem; margin-right: 10px;">(5.0)</span>
-            </div>
             <h1>${pendingEsc(displayTitle)}</h1>
             <p class="author">${t.by}: ${pendingEsc(displayAuthor)}</p>
             <p class="full-desc">${pendingEsc(displayDesc)}</p>
@@ -648,6 +654,7 @@ function closeBookDetails(shouldGoBack = true) {
         if (detailsPage.classList.contains('active')) return;
         detailsPage.style.display = 'none';
         window.currentOpenedBookId = null;
+        setProductMeta(null);
         document.title = LT('Besan Beauty - عالم الجمال والعطور', 'Besan Beauty - World of Beauty & Fragrance');
     }, 500);
     removeLockScroll();
@@ -1771,7 +1778,7 @@ async function startChatSync() {
     _chatStarting = false;
 }
 
-function endChat() {
+async function endChat() {
     if(!confirm(document.documentElement.lang === 'en' ? translations.en.endChatConfirm : "هل أنتِ متأكدة من إنهاء الدردشة؟ سيتم مسح بيانات الدخول.")) return;
     const sess = chatSess();
     if (sess) { try { _supabase.rpc('chat_logout', { p_token: sess.token }); } catch (e) {} }
@@ -1964,3 +1971,17 @@ document.addEventListener('pointercancel', () => { cardTouchStart = null; }, { p
 document.addEventListener('click', event => {
     if (swipedCardImage?.contains(event.target)) { event.preventDefault(); event.stopPropagation(); swipedCardImage = null; }
 }, true);
+
+
+function setProductMeta(book) {
+    const root='https://hanien6608-web.github.io/Besan-Beauty/';
+    const url=book ? new URL(productPageUrl(book.id),root).href : root;
+    const description=book ? String(book.description || book.title) : 'عطور وبرفانات وعلب هدايا وإكسسوارات من Besan Beauty، صيدلانية مصرية. شحن لكل المحافظات.';
+    document.querySelector('link[rel="canonical"]').href=url;
+    document.querySelector('meta[name="description"]').content=description;
+    for(const prefix of ['og','twitter']) {
+        document.querySelector('meta[property="'+prefix+':url"]').content=url;
+        document.querySelector('meta[property="'+prefix+':title"]').content=book ? book.title+' | Besan Beauty' : 'Besan Beauty - عالم الجمال والعطور';
+        document.querySelector('meta[property="'+prefix+':description"]').content=description;
+    }
+}
