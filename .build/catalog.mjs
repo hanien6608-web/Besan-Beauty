@@ -14,9 +14,10 @@ const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const json=x=>JSON.stringify(x).replace(/</g,'\\u003c');
 const canonical='https://hanien6608-web.github.io/Besan-Beauty/';
 let index=fs.readFileSync(new URL('index.html',root),'utf8');
-index=index.replace(/<script id="besan-product-pages">[\s\S]*?<\/script>/,'');
+index=index.replace(/<script id="besan-product-pages">[\s\S]*?<\/script>/,'').replace(/<noscript><style>#splash\{display:none!important\}\.loading-msg\{display:none\}<\/style><\/noscript>/g,'');
+index=index.replace(/\s*<\/head>/,'\n</head>');
 index=index.replace('</head>','<script id="besan-product-pages">window.BESAN_PRODUCT_PAGES='+json(products.map(p=>String(p.id)))+'</script><noscript><style>#splash{display:none!important}.loading-msg{display:none}</style></noscript>\n</head>');
-index=index.replace(/\n<!-- CATALOG LINKS START -->[\s\S]*?<!-- CATALOG LINKS END -->/,'');
+index=index.replace(/\s*<!-- CATALOG LINKS START -->[\s\S]*?<!-- CATALOG LINKS END -->\s*/,'');
 const links='<noscript><nav aria-label="المنتجات">'+products.map(p=>'<a href="product-'+esc(p.id)+'.html">'+esc(p.title)+'</a>').join(' · ')+'</nav></noscript>';
 index=index.replace('</main>', '\n<!-- CATALOG LINKS START -->'+links+'<!-- CATALOG LINKS END -->\n</main>');
 fs.writeFileSync(new URL('index.html',root),index);
