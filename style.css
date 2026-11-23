@@ -1651,3 +1651,14 @@ footer.besan-footer .besan-dev-credit a, footer.besan-footer .besan-dev-credit a
 .product-title-btn { padding:0; border:0; background:none; color:inherit; font:inherit; cursor:pointer; }
 .categories-list button.category-item { border:0; background:transparent; font-family:inherit; line-height:inherit; }
 .categories-list button.category-item.active, .categories-list button.category-item:hover { background:#d60060; color:#fff; }
+
+/* compact catalog cards: less empty space, product image size unchanged */
+.book-card{padding:10px 10px 8px}
+.book-card .image-box{margin-bottom:6px}
+.book-card h3{line-height:1.25;margin:0 0 4px;font-size:.92rem}
+.book-card h3 .product-title-btn{line-height:1.25}
+.book-card .author-name{margin:2px 0 !important;line-height:1.3}
+.book-card .book-desc{margin:0 0 4px !important;line-height:1.3}
+.book-card .price-cart-container{padding:8px 0 0 40px !important;min-height:0 !important}
+.book-card .price{margin:0;line-height:1.2}
+.book-card .cart-btn{width:32px;height:32px;bottom:8px !important;left:10px}

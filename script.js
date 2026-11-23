@@ -441,9 +441,6 @@ function renderBookCard(book, index) {
                 </span>
             </div>
             <h3 itemprop="name"><button type="button" class="product-title-btn" onclick="event.stopPropagation(); showBookDetails('${book.id}')">${pendingEsc(displayTitle)}</button></h3>
-            <div class="star-rating" style="justify-content: center; font-size: 0.8rem;">
-                <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-half"></i>
-            </div>
             <p class="author-name">${t.by}: <span itemprop="brand" itemscope itemtype="https://schema.org/Brand"><span itemprop="name">${pendingEsc(displayAuthor)}</span></span></p>
             <p class="book-desc" itemprop="description">${pendingEsc(displayDesc)}</p>
             ${isSoldOut ?
