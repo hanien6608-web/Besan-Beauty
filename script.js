@@ -896,7 +896,7 @@ async function handlePriceMismatch() {
             saveCartToLocalStorage(); updateCartUI();
         }
     } catch (e) { console.error(e); }
-    alert('الأسعار أو الشحن اتحدّثوا. راجعي السلة والإجمالي الجديد وأكدي الطلب تاني.');
+    await besanAlert('الأسعار أو الشحن اتحدّثوا. راجعي السلة والإجمالي الجديد وأكدي الطلب تاني.');
 }
 
 function addItemToCart(id, customQty = 1) {
@@ -1112,7 +1112,7 @@ async function populateProvinces() {
 let orderSubmitting = false;
 async function confirmOrder() {
     if (orderSubmitting || PAY.busy || document.getElementById('pay-overlay').style.display === 'flex') return;
-    if (cart.length === 0) { alert(document.documentElement.lang === 'en' ? translations.en.cartEmptyAlert : "السلة فارغة! لا يمكن تأكيد طلب بدون منتجات."); return; }
+    if (cart.length === 0) { await besanAlert(document.documentElement.lang === 'en' ? translations.en.cartEmptyAlert : "السلة فارغة! لا يمكن تأكيد طلب بدون منتجات."); return; }
     const nameInput = document.getElementById('customer-name'); const phoneInput = document.getElementById('customer-phone');
     const whatsappInput = document.getElementById('customer-whatsapp'); const provinceSelect = document.getElementById('customer-province');
     const addressTextarea = document.getElementById('customer-address'); const addressError = document.getElementById('address-error');
@@ -1131,7 +1131,7 @@ async function confirmOrder() {
     if (provinceSelect.value === "") { provinceError.innerText = t.provinceErrorMsg; provinceError.style.display = 'block'; isValid = false; }
     if (addressTextarea.value.trim().length < 5) { addressError.innerText = t.addressErrorMsg; addressError.style.display = 'block'; isValid = false; }
     if (!isValid) return;
-    if (!shippingRatesReady || !Object.hasOwn(shippingPrices, provinceSelect.value)) { alert('تعذّر تحميل تكلفة الشحن. حدّثي الصفحة وحاولي تاني.'); return; }
+    if (!shippingRatesReady || !Object.hasOwn(shippingPrices, provinceSelect.value)) { await besanAlert('تعذّر تحميل تكلفة الشحن. حدّثي الصفحة وحاولي تاني.'); return; }
     const booksTotal = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
     const totalAmount = booksTotal + shippingCost;
     const orderData = { customer_name: nameInput.value.trim(), customer_phone: phoneInput.value.trim(), customer_whatsapp: whatsappInput.value.trim(), province: provinceSelect.value, address: addressTextarea.value.trim(), notes: notesTextarea ? notesTextarea.value.trim() : "", items: cart.map(item => ({ ...item })), total_amount: totalAmount, shipping_cost: shippingCost, status: 'pending' };
@@ -1144,7 +1144,7 @@ async function confirmOrder() {
     try { settings = await loadPaymentSettings(); }
     catch (e) {
         if (isMissingPaymentTable(e)) legacy = true;   // الـ SQL لسه ما اتشغّلش: الموقع يشتغل بالطريقة القديمة
-        else { alert(payT('settingsError')); return; }
+        else { await besanAlert(payT('settingsError')); return; }
     }
     const deposit = (!legacy && settings && settings.deposit_enabled) ? calcDeposit(settings, booksTotal) : 0;
     if (deposit > 0) { openPayModal({ mode: 'order', orderData, settings, deposit, booksTotal }); return; }
@@ -1154,10 +1154,10 @@ async function confirmOrder() {
         if (isPriceMismatch(error)) { await handlePriceMismatch(); return; }
         if (error || !placed) { console.error('order insert failed', error); throw new Error('order-failed'); }
         chatSessionStart(placed);
-        alert(t.orderSuccess);
+        await besanAlert(t.orderSuccess);
         resetOrderForm();
         closeCart();
-    } catch (err) { console.error(err); alert(`${t.orderError} ${LT('جرّبي تاني بعد شوية، أو كلمينا على واتساب.', 'Please try again in a moment, or contact us on WhatsApp.')}`); }
+    } catch (err) { console.error(err); await besanAlert(`${t.orderError} ${LT('جرّبي تاني بعد شوية، أو كلمينا على واتساب.', 'Please try again in a moment, or contact us on WhatsApp.')}`); }
     finally { orderSubmitting = false; confirmBtn.disabled = false; confirmBtn.innerHTML = `${t.confirmOrderBtn} <i class="bi bi-bag-check-fill"></i>`; }
 }
 
@@ -1293,7 +1293,7 @@ function openPayModal(opts) {
 }
 async function openReceiptOnly(targetOrderId) {
     let settings = null;
-    try { settings = await loadPaymentSettings(); } catch (e) { alert(payT('settingsError')); return; }
+    try { settings = await loadPaymentSettings(); } catch (e) { await besanAlert(payT('settingsError')); return; }
     openPayModal({ mode: 'attach', settings, targetOrderId });
 }
 function closePayModal() { if (PAY.busy) return; document.getElementById('pay-overlay').style.display = 'none'; PAY.busy = false; syncScrollLock(); }
@@ -1779,7 +1779,7 @@ async function startChatSync() {
 }
 
 async function endChat() {
-    if(!confirm(document.documentElement.lang === 'en' ? translations.en.endChatConfirm : "هل أنتِ متأكدة من إنهاء الدردشة؟ سيتم مسح بيانات الدخول.")) return;
+    if(!await besanConfirm(document.documentElement.lang === 'en' ? translations.en.endChatConfirm : "هل أنتِ متأكدة من إنهاء الدردشة؟ سيتم مسح بيانات الدخول.")) return;
     const sess = chatSess();
     if (sess) { try { _supabase.rpc('chat_logout', { p_token: sess.token }); } catch (e) {} }
     chatSessClear();
@@ -1985,3 +1985,43 @@ function setProductMeta(book) {
         document.querySelector('meta[property="'+prefix+':description"]').content=description;
     }
 }
+
+// Promise-based, queued dialogs. Native messages are kept unchanged.
+const besanDialogQueue = [];
+let besanDialogBusy = false;
+function besanAlert(message) { return besanDialog(String(message), false); }
+function besanConfirm(message) { return besanDialog(String(message), true); }
+function besanDialog(message, confirmMode) {
+    return new Promise(resolve => { besanDialogQueue.push({message,confirmMode,resolve}); besanNextDialog(); });
+}
+function besanNextDialog() {
+    if (besanDialogBusy || !besanDialogQueue.length) return;
+    besanDialogBusy = true;
+    const {message,confirmMode,resolve} = besanDialogQueue.shift();
+    const previousFocus = document.activeElement;
+    const dialog = document.createElement('dialog');
+    dialog.className = 'besan-dialog';
+    dialog.setAttribute('aria-labelledby','besan-dialog-title');
+    dialog.setAttribute('aria-describedby','besan-dialog-message');
+    dialog.innerHTML = '<h2 id="besan-dialog-title">Besan Beauty</h2><p id="besan-dialog-message"></p><div class="besan-dialog-actions"><button type="button" class="besan-dialog-ok"></button><button type="button" class="besan-dialog-cancel">إلغاء</button></div>';
+    dialog.querySelector('p').textContent = message;
+    const ok = dialog.querySelector('.besan-dialog-ok');
+    const cancel = dialog.querySelector('.besan-dialog-cancel');
+    ok.textContent = confirmMode ? 'تأكيد' : 'حسنًا';
+    cancel.hidden = !confirmMode;
+    document.body.append(dialog);
+    let settled = false;
+    function finish(value) {
+        if(settled) return;
+        settled = true;
+        dialog.close(); dialog.remove();
+        if(previousFocus?.isConnected) previousFocus.focus({preventScroll:true});
+        besanDialogBusy=false; resolve(value); besanNextDialog();
+    }
+    ok.addEventListener('click',()=>finish(true));
+    cancel.addEventListener('click',()=>finish(false));
+    dialog.addEventListener('cancel', event=>{event.preventDefault();finish(false);});
+    dialog.showModal();
+    (confirmMode ? cancel : ok).focus();
+}
+
