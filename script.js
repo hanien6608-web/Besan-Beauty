@@ -4,6 +4,7 @@
 const supabaseUrl = APP_CONFIG.SUPABASE_URL;
 const supabaseKey = APP_CONFIG.SUPABASE_ANON_KEY;
 // الموقع للعميلات دايماً زائر عادي: مفيش جلسة محفوظة (حتى لو لوحة الأدمن مفتوحة على نفس المتصفح)
+setTimeout(() => document.body && document.body.classList.remove('catalog-loading'), 12000);
 const _supabase = supabase.createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
 window.BESAN_SUPABASE = _supabase;
 
@@ -299,6 +300,7 @@ async function getMyLibraryData() {
 
     if (error) {
         console.error("Error connecting:", error.message);
+        document.body.classList.remove('catalog-loading');
         container.innerHTML = `<div class="error-msg">${LT('تعذّر تحميل المنتجات دلوقتي. حدّثي الصفحة بعد شوية.', 'We could not load the products right now. Please refresh the page in a moment.')}</div>`;
         return;
     }
@@ -389,6 +391,7 @@ function renderBooksList(data) {
     }
 
     container.innerHTML = data.map((book, index) => renderBookCard(book, index)).join('');
+    document.body.classList.remove('catalog-loading');
 
     updateCartUI(); // لضمان ظهور علامات الصح
 }
@@ -465,8 +468,8 @@ function renderBookCard(book, index) {
        <div class="book-card" style="animation: fadeInUp ${0.3 + (Math.min(index, 3) * 0.05)}s ease-out;" onclick="showBookDetails('${book.id}')" itemscope itemtype="https://schema.org/Product">
             <div class="image-box">
                 ${has2nd ? `<div class="hover-trigger trigger-right"></div><div class="hover-trigger trigger-left"></div>` : ''}
-                <img ${localImgSrcset(img1, GRID_IMG_SIZES)} class="main-img" ${index < 4 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" alt="${pendingEsc(displayTitle)} - ${pendingEsc(displayAuthor)}" itemprop="image"> <!-- تحميل ذكي حسب الصف -->
-                ${has2nd ? `<img ${localImgSrcset(img2, GRID_IMG_SIZES)} class="hover-img" loading="lazy" decoding="async" alt="${LT('صورة إضافية لـ', 'Additional photo of')} ${pendingEsc(displayTitle)}">` : ''}
+                <img ${localImgSrcset(img1, GRID_IMG_SIZES)} class="main-img" ${index < 4 ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async" alt="" itemprop="image"> <!-- تحميل ذكي حسب الصف -->
+                ${has2nd ? `<img ${localImgSrcset(img2, GRID_IMG_SIZES)} class="hover-img" loading="lazy" decoding="async" alt="">` : ''}
                 <div class="image-indicators"><div class="dot active"></div>${has2nd ? `<div class="dot"></div>` : ''}</div>
             </div>
             <div class="book-actions">
@@ -475,7 +478,7 @@ function renderBookCard(book, index) {
                     <i id="wish-icon-${book.id}" class="bi bi-bookmark-heart"></i>
                 </span>
             </div>
-            <h3 itemprop="name"><a class="product-title-btn" href="${productPageUrl(book.id)}" onclick="event.stopPropagation();if(event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();event.stopPropagation();showBookDetails('${book.id}')}">${pendingEsc(displayTitle)}</a></h3>
+            <h2 itemprop="name"><a class="product-title-btn" href="${productPageUrl(book.id)}" onclick="event.stopPropagation();if(event.button===0&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){event.preventDefault();event.stopPropagation();showBookDetails('${book.id}')}">${pendingEsc(displayTitle)}</a></h3>
             <p class="author-name">${t.by}: <span itemprop="brand" itemscope itemtype="https://schema.org/Brand"><span itemprop="name">${pendingEsc(displayAuthor)}</span></span></p>
             <p class="book-desc" itemprop="description">${pendingEsc(displayDesc)}</p>
             ${isSoldOut ?
@@ -512,9 +515,9 @@ function renderSmallCard(book) {
     return `
         <div class="book-card" style="padding: 8px; font-size: 0.8rem;" onclick="event.stopPropagation(); showBookDetails('${book.id}')">
             <div class="image-box" style="height: 120px;">
-                <img ${localImgSrcset(img, '160px')} loading="lazy" decoding="async" alt="${pendingEsc(book.title)}" style="object-fit: cover;">
+                <img ${localImgSrcset(img, '160px')} loading="lazy" decoding="async" alt="" style="object-fit: cover;">
             </div>
-            <h3 style="font-size: 0.8rem; height: 35px; overflow: hidden;"><button type="button" class="product-title-btn" onclick="event.stopPropagation(); showBookDetails('${book.id}')">${pendingEsc(book.title)}</button></h3>
+            <h2 style="font-size: 0.8rem; height: 35px; overflow: hidden;"><button type="button" class="product-title-btn" onclick="event.stopPropagation(); showBookDetails('${book.id}')">${pendingEsc(book.title)}</button></h3>
             <div class="price" style="font-size: 0.9rem;">${pendingEsc(book.price)} ${t.currency}</div>
             <button class="cart-btn ${isInCart ? 'success' : ''}" data-id="${book.id}" style="width: 25px; height: 25px; font-size: 0.8rem; bottom: 8px; left: 8px;" onclick="event.stopPropagation(); addItemToCart('${book.id}')">
                 <i class="bi ${isInCart ? 'bi-check-lg' : 'bi-cart-plus'}"></i>
@@ -968,7 +971,7 @@ function updateCartUI() {
         // ترجمة اسم الكتاب داخل السلة تلقائياً
         let displayTitle = (lang === 'en' && autoTranslationCache[item.id]) ? autoTranslationCache[item.id].title : item.title;
         return `<div class="cart-item">
-            <img ${localImgSrcset(getValidImageUrl(item.image_url), '64px')} alt="${pendingEsc(displayTitle)}">
+            <img ${localImgSrcset(getValidImageUrl(item.image_url), '64px')} alt="">
             <div class="cart-item-details">
                 <h4>${pendingEsc(displayTitle)}</h4>
                 <p>${pendingEsc(item.price)} ${t.currency}</p>
