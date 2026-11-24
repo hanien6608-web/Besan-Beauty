@@ -1,5 +1,5 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v41';
+const CACHE_NAME = 'besan-client-shell-v42';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',
@@ -54,6 +54,20 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // الصور المحوّلة والخطوط أسماؤها ثابتة بمحتواها: كاش أولاً بدل ضغط الشبكة كل مرة.
+  if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/vendor/fonts/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
+        if (response && response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      }))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(request, { cache: 'no-cache' }).then((response) => {
