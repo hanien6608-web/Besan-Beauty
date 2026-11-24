@@ -1,5 +1,5 @@
 // Service Worker — Besan Beauty (واجهة العميل)
-const CACHE_NAME = 'besan-client-shell-v42';
+const CACHE_NAME = 'besan-client-shell-v43';
 const APP_START = './index.html';
 const SHELL_FILES = [
   './',
@@ -16,15 +16,13 @@ const SHELL_FILES = [
   './order.mp3',
   './chat.mp3',
   './vendor/supabase.js',
-  './vendor/google-fonts.css',
-  './vendor/bootstrap-icons.min.css',
+  './vendor/bootstrap-icons-subset.css',
   './vendor/fonts/cairo-861f3930.woff2',
-  './vendor/fonts/bootstrap-icons.woff',
   './vendor/fonts/cairo-c4b7a0b2.woff2',
   './vendor/fonts/josefin-24e312f2.woff2',
   './vendor/fonts/josefin-88411d2f.woff2',
   './vendor/fonts/cairo-f8c8bb31.woff2',
-  './vendor/fonts/bootstrap-icons.woff2',
+  './vendor/fonts/bootstrap-icons-479c92ed50.woff2',
   './vendor/fonts/josefin-590cd2c4.woff2'
 ];
 
